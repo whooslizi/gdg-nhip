@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Search, Ticket } from 'lucide-react';
+import { Moon, Search, Sun, Ticket } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { categoryName } from '@/lib/format';
@@ -22,6 +22,16 @@ export function Navbar() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [query, setQuery] = useState(params.get('search') ?? '');
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const toggleDark = () => {
+    document.documentElement.classList.toggle('dark', !dark);
+    try {
+      localStorage.setItem('theme', dark ? 'light' : 'dark');
+    } catch {
+      // private mode; the choice just won't persist
+    }
+    setDark(!dark);
+  };
   const categories = useQuery({
     queryKey: ['categories'],
     queryFn: ({ signal }) => listCategories(signal),
@@ -33,7 +43,7 @@ export function Navbar() {
   };
 
   return (
-    <header className="flex flex-wrap items-center gap-x-6 gap-y-3 bg-white px-4 py-4 sm:px-10 sm:py-5">
+    <header className="flex flex-wrap items-center gap-x-6 gap-y-3 bg-surface px-4 py-4 sm:px-10 sm:py-5">
       <Logo />
       <form
         role="search"
@@ -71,11 +81,20 @@ export function Navbar() {
           <Ticket className="size-4" aria-hidden />
           {t('nav.findTickets')}
         </Link>
+        <button
+          type="button"
+          onClick={toggleDark}
+          aria-label={t(dark ? 'nav.lightMode' : 'nav.darkMode')}
+          title={t(dark ? 'nav.lightMode' : 'nav.darkMode')}
+          className="grid size-9 place-items-center rounded-md border border-line hover:text-wine-700"
+        >
+          {dark ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />}
+        </button>
         <select
           aria-label="Language"
           value={locale}
           onChange={(e) => setLocale(e.target.value as Locale)}
-          className="h-9 rounded-md border border-line bg-white px-2 text-sm font-semibold"
+          className="h-9 rounded-md border border-line bg-surface px-2 text-sm font-semibold"
         >
           <option value="vi">VN</option>
           <option value="en">EN</option>

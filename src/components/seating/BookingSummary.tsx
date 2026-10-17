@@ -80,7 +80,7 @@ function HoldTimer({ hold, onExpire }: { hold: Hold; onExpire: () => void }) {
   const urgent = remaining !== null && remaining < 60_000;
   return (
     <div
-      className={`flex items-center justify-between rounded-lg px-3 py-2.5 ${urgent ? 'bg-amber-50 text-amber-900' : 'bg-blush-100 text-wine-700'}`}
+      className={`flex items-center justify-between rounded-lg px-3 py-2.5 ${urgent ? 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200' : 'bg-blush-100 text-wine-700'}`}
     >
       <span className="flex items-center gap-2 text-sm font-medium">
         <Timer className="size-4" aria-hidden />

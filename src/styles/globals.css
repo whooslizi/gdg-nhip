@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Design tokens — "Nhịp" brand. */
 @theme {
   --font-sans: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
@@ -15,6 +17,7 @@
   --color-blush-200: #f8dde1;
   --color-blush-100: #fcf0f2;
   --color-paper: #fbf8f5;
+  --color-surface: #ffffff;
   --color-ink: #1b1320;
   --color-ink-muted: #5e5563;
   --color-line: #e8e3e0;
@@ -25,6 +28,23 @@
   --color-seat-held: #f2c14e;
   --color-seat-sold: #6b6470;
   --color-seat-blocked: #d9d4d2;
+}
+
+/* Dark mode: swap the tokens; burgundy and blush-200/300 stay because they sit on burgundy. */
+.dark {
+  color-scheme: dark;
+  --color-wine-700: #f08aa5;
+  --color-wine-600: #f4a3b8;
+  --color-wine-500: #f7b6c7;
+  --color-blush-100: #3a1825;
+  --color-paper: #120d14;
+  --color-surface: #1c1520;
+  --color-ink: #f3edf4;
+  --color-ink-muted: #b5aab9;
+  --color-line: #3a3040;
+  --color-seat-available: #2a2230;
+  --color-seat-sold: #4a4350;
+  --color-seat-blocked: #2f2833;
 }
 
 @layer base {

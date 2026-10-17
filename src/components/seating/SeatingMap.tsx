@@ -18,7 +18,7 @@ export function SeatingMap({
   const currency = map.ticketTypes[0]?.currency ?? 'VND';
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-line bg-white p-4 sm:p-6">
+    <div className="overflow-x-auto rounded-xl border border-line bg-surface p-4 sm:p-6">
       <div className="mx-auto w-max min-w-full">
         <div className="mx-auto mb-8 w-3/4 max-w-md rounded-b-[2rem] bg-burgundy-900 py-2 text-center text-xs font-semibold tracking-[0.4em] text-blush-200 uppercase">
           {t('seats.stage')}

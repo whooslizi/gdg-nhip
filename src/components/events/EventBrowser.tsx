@@ -71,7 +71,7 @@ export function EventBrowser() {
           type="button"
           aria-label={t('events.scroll')}
           onClick={() => tabs.current?.scrollBy({ left: 240, behavior: 'smooth' })}
-          className="absolute right-0 grid size-9 place-items-center bg-white hover:text-wine-700"
+          className="absolute right-0 grid size-9 place-items-center bg-surface hover:text-wine-700"
         >
           <ChevronRight className="size-5" aria-hidden />
         </button>

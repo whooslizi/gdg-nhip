@@ -84,7 +84,7 @@ export function CancelBooking({
             loop
             playsInline
             controls
-            className="mt-3 aspect-video w-full rounded-lg bg-ink"
+            className="mt-3 aspect-video w-full rounded-lg bg-black"
           />
           <p className="mt-2 text-xs text-ink-muted">
             <a

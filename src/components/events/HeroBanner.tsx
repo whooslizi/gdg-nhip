@@ -14,7 +14,7 @@ export function HeroBanner({ events }: { events: EventSummary[] }) {
   if (!event) return <div className="aspect-[16/9] bg-burgundy-900 sm:aspect-[3.3/1]" />;
   const go = (delta: number) => setIndex((i) => (i + delta + events.length) % events.length);
   const arrow =
-    'absolute top-1/2 z-20 hidden size-11 sm:grid -translate-y-1/2 place-items-center rounded-full bg-white text-ink shadow-md hover:bg-blush-100';
+    'absolute top-1/2 z-20 hidden size-11 sm:grid -translate-y-1/2 place-items-center rounded-full bg-white text-burgundy-900 shadow-md hover:bg-blush-200';
 
   return (
     <section aria-roledescription="carousel" aria-label="Featured events" className="relative">

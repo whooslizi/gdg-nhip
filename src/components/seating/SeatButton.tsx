@@ -18,7 +18,7 @@ export function seatVisualState(seat: Seat, selected: boolean): SeatVisualState 
 export const seatStyles: Record<SeatVisualState, string> = {
   available: 'bg-seat-available border-ink/25 text-ink hover:border-wine-700 hover:bg-blush-100',
   selected: 'bg-seat-selected border-seat-selected text-white',
-  mine: 'bg-blush-200 border-wine-700 border-2 text-wine-700',
+  mine: 'bg-blush-200 dark:bg-blush-100 border-wine-700 border-2 text-wine-700',
   held: 'bg-seat-held border-amber-500 text-amber-950',
   sold: 'bg-seat-sold border-seat-sold text-white seat-hatch',
   blocked: 'bg-seat-blocked border-transparent text-ink-muted',

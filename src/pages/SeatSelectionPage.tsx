@@ -242,7 +242,7 @@ export function SeatSelectionPage() {
         </div>
         {live !== null && (
           <p
-            className={`flex items-center gap-1.5 text-xs ${live ? 'text-emerald-700' : 'text-amber-800'}`}
+            className={`flex items-center gap-1.5 text-xs ${live ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-300'}`}
             role="status"
           >
             {live ? (
@@ -275,7 +275,7 @@ export function SeatSelectionPage() {
           </ul>
         </div>
 
-        <aside className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.2)] lg:sticky lg:top-6 lg:rounded-xl lg:border lg:shadow-none">
+        <aside className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.2)] lg:sticky lg:top-6 lg:rounded-xl lg:border lg:shadow-none">
           <button
             type="button"
             aria-expanded={sheetOpen}

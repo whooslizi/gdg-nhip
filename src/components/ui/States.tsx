@@ -8,7 +8,7 @@ export function ErrorState({ message, onRetry }: { message?: string; onRetry?: (
   return (
     <div
       role="alert"
-      className="flex flex-col items-center gap-3 rounded-xl border border-line bg-white px-6 py-12 text-center"
+      className="flex flex-col items-center gap-3 rounded-xl border border-line bg-surface px-6 py-12 text-center"
     >
       <AlertTriangle className="size-8 text-wine-600" aria-hidden />
       <p className="font-semibold">{t('common.error')}</p>
@@ -32,7 +32,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line bg-white px-6 py-14 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line bg-surface px-6 py-14 text-center">
       <Inbox className="size-8 text-ink-muted" aria-hidden />
       <p className="font-semibold">{title}</p>
       {body && <p className="max-w-md text-sm text-ink-muted">{body}</p>}
