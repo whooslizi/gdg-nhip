@@ -1,0 +1,64 @@
+@import 'tailwindcss';
+
+/* Design tokens — "Nhịp" brand. */
+@theme {
+  --font-sans: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+
+  --color-burgundy-950: #2a0611;
+  --color-burgundy-900: #4a0d1f;
+  --color-burgundy-800: #63142b;
+  --color-wine-700: #8c1c3a;
+  --color-wine-600: #a8264a;
+  --color-wine-500: #c23a60;
+  --color-blush-300: #f3c6cc;
+  --color-blush-200: #f8dde1;
+  --color-blush-100: #fcf0f2;
+  --color-paper: #fbf8f5;
+  --color-ink: #1b1320;
+  --color-ink-muted: #5e5563;
+  --color-line: #e8e3e0;
+
+  /* Seat states (paired with icons/patterns, never colour alone). */
+  --color-seat-available: #ffffff;
+  --color-seat-selected: #8c1c3a;
+  --color-seat-held: #f2c14e;
+  --color-seat-sold: #6b6470;
+  --color-seat-blocked: #d9d4d2;
+}
+
+@layer base {
+  html {
+    color: var(--color-ink);
+    background: var(--color-paper);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-wine-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Diagonal hatch for "sold" seats so state isn't conveyed by colour alone. */
+.seat-hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 3px,
+    rgb(255 255 255 / 0.35) 3px 5px
+  );
+}

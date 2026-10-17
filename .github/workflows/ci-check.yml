@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+ # schedule:
+    # cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect package manager
+        id: pm
+        run: |
+          if [ -f pnpm-lock.yaml ]; then echo "name=pnpm" >> "$GITHUB_OUTPUT"
+          elif [ -f yarn.lock ]; then echo "name=yarn" >> "$GITHUB_OUTPUT"
+          elif [ -f package-lock.json ]; then echo "name=npm" >> "$GITHUB_OUTPUT"
+          else echo "::error::No lockfile found (package-lock.json, yarn.lock or pnpm-lock.yaml). Commit one."; exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.pm.outputs.name == 'pnpm'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: ${{ steps.pm.outputs.name }}
+
+      - name: Install (lockfile enforced)
+        run: |
+          case "${{ steps.pm.outputs.name }}" in
+            npm)  npm ci ;;
+            pnpm) pnpm install --frozen-lockfile ;;
+            yarn) yarn install --frozen-lockfile ;;
+          esac
+
+      - name: Lint, typecheck, test, build
+        run: |
+          PM="${{ steps.pm.outputs.name }}"
+          for s in lint typecheck test build; do
+            if node -e "process.exit(require('./package.json').scripts?.['$s'] ? 0 : 1)"; then
+              echo "::group::$s"
+              $PM run $s
+              echo "::endgroup::"
+            else
+              echo "::notice::No '$s' script, skipped"
+            fi
+          done
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect package manager
+        id: pm
+        run: |
+          if [ -f pnpm-lock.yaml ]; then echo "name=pnpm" >> "$GITHUB_OUTPUT"
+          elif [ -f yarn.lock ]; then echo "name=yarn" >> "$GITHUB_OUTPUT"
+          elif [ -f package-lock.json ]; then echo "name=npm" >> "$GITHUB_OUTPUT"
+          else echo "::error::No lockfile found. Commit one."; exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.pm.outputs.name == 'pnpm'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Audit dependencies (fails on high/critical)
+        run: |
+          case "${{ steps.pm.outputs.name }}" in
+            npm)  npm audit --audit-level=high ;;
+            pnpm) pnpm audit --audit-level high ;;
+            yarn) yarn audit --level high ;;
+          esac
+
+  dependency-review:
+    name: dependency-review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  codeql:
+    name: codeql
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
