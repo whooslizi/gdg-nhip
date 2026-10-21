@@ -1,0 +1,2 @@
+ALTER TABLE public.showtime_seats
+DROP CONSTRAINT IF EXISTS showtime_seats_holdtoken_key;

@@ -6,12 +6,14 @@ async function createEvent(payload) {
     .from("events")
     .insert({
       eventname: payload.eventName,
-      directors: payload.directors ?? null,
-      actors: payload.actors ?? null,
-      types: payload.types ?? null,
-      poster: payload.poster ?? null,
+      directors: payload.directors ?? [],
+      actors: payload.actors ?? [],
+      types: payload.types ?? [],
+      poster: payload.poster,
       duration: payload.duration,
-      languages: payload.languages ?? null,
+      languages: payload.languages ?? [],
+      startat: payload.startAt,
+      endat: payload.endAt
     })
     .select()
     .single();
@@ -29,6 +31,8 @@ async function updateEvent(eventId, payload) {
     poster: "poster",
     duration: "duration",
     languages: "languages",
+    startAt: "startat",
+    endAt: "endat"
   };
 
   const updates = {};
@@ -62,6 +66,7 @@ async function createShowtime(payload) {
       roomid: payload.roomId,
       startat: payload.startAt,
       endat: payload.endAt,
+      status: payload.status,
     })
     .select()
     .single();
