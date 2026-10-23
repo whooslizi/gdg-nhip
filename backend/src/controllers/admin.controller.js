@@ -5,6 +5,27 @@ function parseId(value) {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
+function isTime(value) {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+function invalidEventField(body) {
+  if ("eventName" in body && (typeof body.eventName !== "string" || !body.eventName.trim()))
+    return "eventName must be a non-empty string";
+  if ("duration" in body && (!Number.isInteger(body.duration) || body.duration <= 0))
+    return "duration must be a positive integer";
+  if ("poster" in body && body.poster !== null && typeof body.poster !== "string")
+    return "poster must be a string or null";
+  for (const key of ["directors", "actors", "types", "languages"]) {
+    if (key in body && (!Array.isArray(body[key]) || !body[key].every((v) => typeof v === "string")))
+      return `${key} must be an array of strings`;
+  }
+  for (const key of ["startAt", "endAt"]) {
+    if (key in body && body[key] !== null && !isTime(body[key])) return `${key} must be a date`;
+  }
+  return null;
+}
+
 function handleError(res, error) {
   console.error("Admin API error:", error);
 
@@ -136,6 +157,11 @@ async function createEvent(req, res) {
       });
     }
 
+    const invalid = invalidEventField(req.body);
+    if (invalid) {
+      return res.status(400).json({ success: false, message: invalid });
+    }
+
     const data = await adminService.createEvent({
       ...req.body,
       eventName: eventName.trim(),
@@ -156,6 +182,11 @@ async function updateEvent(req, res) {
         success: false,
         message: "Invalid eventId",
       });
+    }
+
+    const invalid = invalidEventField(req.body ?? {});
+    if (invalid) {
+      return res.status(400).json({ success: false, message: invalid });
     }
 
     const data = await adminService.updateEvent(eventId, req.body);
@@ -184,7 +215,8 @@ async function createShowtime(req, res) {
       typeof endAt !== "string" ||
       !Number.isFinite(Date.parse(startAt)) ||
       !Number.isFinite(Date.parse(endAt)) ||
-      Date.parse(endAt) <= Date.parse(startAt)
+      Date.parse(endAt) <= Date.parse(startAt) ||
+      (req.body.status !== undefined && typeof req.body.status !== "string")
     ) {
       return res.status(400).json({
         success: false,
@@ -210,26 +242,41 @@ async function updateShowtime(req, res) {
       });
     }
 
-    const data = await adminService.updateShowtime(
-      showtimeId,
-      req.body
-    );
+    const body = req.body ?? {};
+    if (
+      ("startAt" in body && !isTime(body.startAt)) ||
+      ("endAt" in body && !isTime(body.endAt)) ||
+      ("status" in body && typeof body.status !== "string") ||
+      (["eventId", "roomId"].some((key) => key in body && !parseId(body[key])))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid showtime fields",
+      });
+    }
 
-    if (!data) {
+    // Check the range against the stored row before writing, not after.
+    const current = await adminService.getShowtime(showtimeId);
+    if (!current) {
       return res.status(404).json({
         success: false,
         message: "Showtime not found",
       });
     }
-
-    if (
-      data.startat &&
-      data.endat &&
-      Date.parse(data.endat) <= Date.parse(data.startat)
-    ) {
+    const startAt = body.startAt ?? current.startat;
+    const endAt = body.endAt ?? current.endat;
+    if (Date.parse(endAt) <= Date.parse(startAt)) {
       return res.status(400).json({
         success: false,
         message: "endAt must be later than startAt",
+      });
+    }
+
+    const data = await adminService.updateShowtime(showtimeId, body);
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "Showtime not found",
       });
     }
 

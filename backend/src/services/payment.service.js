@@ -9,6 +9,9 @@ async function processMockPayment({
   price,
   result,
 }) {
+  const expectedPrice = await heldSeatsPrice(holdToken);
+  if (price !== expectedPrice) throw new Error("Price does not match the held seats");
+
   const { data, error } = await supabase.rpc("process_mock_payment", {
     p_hold_token: holdToken,
     p_user_name: userName,
@@ -123,6 +126,28 @@ function seatPrice(seatType) {
     default:
       return 0;
   }
+}
+
+async function heldSeatsPrice(holdToken) {
+  const { data: held, error } = await supabase
+    .from("showtime_seats")
+    .select("seatid")
+    .eq("holdtoken", holdToken)
+    .eq("status", "holding");
+  if (error) throw error;
+  if (!held?.length) throw new Error("Hold token is invalid or expired");
+
+  const { data: seats, error: seatsError } = await supabase
+    .from("seats")
+    .select("seatid, seattype")
+    .in("seatid", held.map((item) => item.seatid));
+  if (seatsError) throw seatsError;
+
+  const prices = seats.map((seat) => seatPrice(seat.seattype));
+  if (prices.length !== held.length || prices.includes(0)) {
+    throw new Error("Some held seats have no configured price");
+  }
+  return prices.reduce((total, value) => total + value, 0);
 }
 
 function eventSlug(eventName) {

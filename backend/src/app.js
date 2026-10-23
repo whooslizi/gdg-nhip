@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 
 const eventRoutes = require("./routes/event.routes");
 const areaRoutes = require("./routes/area.routes");
@@ -23,9 +24,11 @@ app.use("/api/events", eventRoutes);
 app.use("/api/areas", areaRoutes);
 app.use("/api/cinemas", cinemaRoutes);
 app.use("/api/showtimes", showtimeRoutes);
-app.use("/api/holds", holdRoutes);
-app.use("/api/payments", paymentRoutes);
-app.use("/api/bookings", bookingRoutes);
+// Booking/payment lookups only need an ID + email, so cap guessing per IP.
+const publicLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+app.use("/api/holds", publicLimiter, holdRoutes);
+app.use("/api/payments", publicLimiter, paymentRoutes);
+app.use("/api/bookings", publicLimiter, bookingRoutes);
 app.use("/api/admin", adminRoutes);
 
 app.use((req, res) => {

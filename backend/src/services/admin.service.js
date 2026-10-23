@@ -145,6 +145,17 @@ async function createShowtime(payload) {
   return data;
 }
 
+async function getShowtime(showtimeId) {
+  const { data, error } = await supabase
+    .from("showtimes")
+    .select("showtimeid, startat, endat")
+    .eq("showtimeid", showtimeId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 async function updateShowtime(showtimeId, payload) {
   const fields = {
     eventId: "eventid",
@@ -187,5 +198,6 @@ module.exports = {
   createEvent,
   updateEvent,
   createShowtime,
+  getShowtime,
   updateShowtime,
 };

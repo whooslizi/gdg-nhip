@@ -9,6 +9,13 @@ function secureEqual(left, right) {
   const rightHash = crypto.createHash("sha256").update(String(right)).digest();
   return crypto.timingSafeEqual(leftHash, rightHash);
 }
+// Passwords go through scrypt (not sha256) so the compare is a proper slow KDF.
+const PASSWORD_SALT = crypto.randomBytes(16);
+function passwordEqual(input, expected) {
+  const inputHash = crypto.scryptSync(String(input), PASSWORD_SALT, 32);
+  const expectedHash = crypto.scryptSync(String(expected), PASSWORD_SALT, 32);
+  return crypto.timingSafeEqual(inputHash, expectedHash);
+}
 
 function sign(payload, secret) {
   return crypto.createHmac("sha256", secret).update(payload).digest("base64url");
@@ -48,7 +55,7 @@ function createAdminAuthService(
     if (attempt?.lockedUntil) attemptsByClient.delete(clientKey);
 
     const usernameMatches = secureEqual(username ?? "", config.username);
-    const passwordMatches = secureEqual(password ?? "", config.password);
+    const passwordMatches = passwordEqual(password ?? "", config.password);
     if (!(usernameMatches & passwordMatches)) {
       const failures = (attemptsByClient.get(clientKey)?.failures ?? 0) + 1;
       if (failures >= MAX_FAILURES) {
