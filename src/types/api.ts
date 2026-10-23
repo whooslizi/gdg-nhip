@@ -56,6 +56,7 @@ export interface Seat {
   seatNumber: number;
   ticketTypeId: string;
   priceMinor: number;
+  priceConfigured?: boolean;
   status: SeatStatus;
   heldByMe: boolean;
   version: number;
@@ -63,6 +64,8 @@ export interface Seat {
 
 export interface SeatMap {
   eventId: string;
+  showtimeId?: string;
+  priceConfigured?: boolean;
   eventSlug: string;
   eventTitle: string;
   bookingState: BookingState;
@@ -93,6 +96,7 @@ export interface Hold {
     unitPriceMinor: number;
   }[];
   totalMinor: number;
+  priceConfigured?: boolean;
   currency: string;
   bookingId: string | null;
 }
@@ -111,7 +115,13 @@ export interface Booking {
     venue: string | null;
     city: string | null;
   };
-  items: { seatLabel: string; section: string; ticketType: string; unitPriceMinor: number }[];
+  items: {
+    seatLabel: string;
+    section: string;
+    ticketType: string;
+    unitPriceMinor: number;
+    priceConfigured?: boolean;
+  }[];
   totalMinor: number;
   currency: string;
   confirmedAt: string | null;

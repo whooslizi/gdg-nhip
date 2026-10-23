@@ -19,9 +19,10 @@ export function BookingPage() {
 
   if (query.isPending) return <Skeleton className="m-10 h-96" />;
   if (query.isError) {
-    // Another browser: the buyer has to use email + code instead.
     if (query.error instanceof ApiError && query.error.status === 404)
-      return <Navigate to="/my-bookings" replace />;
+      return <Navigate to={`/my-bookings?bookingId=${encodeURIComponent(bookingId)}`} replace />;
+    if (query.error instanceof ApiError && query.error.code === 'BOOKING_EMAIL_REQUIRED')
+      return <Navigate to={`/my-bookings?bookingId=${encodeURIComponent(bookingId)}`} replace />;
     return <ErrorState message={query.error.message} onRetry={() => query.refetch()} />;
   }
   return (

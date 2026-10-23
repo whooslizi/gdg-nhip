@@ -1,4 +1,5 @@
 import { CheckCircle2, KeyRound, ShieldAlert, XCircle } from 'lucide-react';
+import { API_URL } from '@/lib/api-client';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
 import type { Booking } from '@/types/api';
@@ -16,7 +17,7 @@ export function BookingDetails({ booking: b }: { booking: Booking }) {
         </h1>
         <p className="text-blush-200">{b.event.title}</p>
       </div>
-      <div className="m-6 rounded-lg border-2 border-dashed border-wine-600 bg-blush-100 p-4">
+      {b.accessCode && <div className="m-6 rounded-lg border-2 border-dashed border-wine-600 bg-blush-100 p-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-wine-700">
           <KeyRound className="size-4" aria-hidden /> {t('booking.code')}
         </p>
@@ -24,7 +25,7 @@ export function BookingDetails({ booking: b }: { booking: Booking }) {
           {b.accessCode}
         </p>
         <p className="mt-2 text-sm text-ink-muted">{t('booking.codeHint')}</p>
-      </div>
+      </div>}
       {b.cancelCode && !cancelled && (
         <div className="mx-6 mb-6 rounded-lg border border-line p-4">
           <p className="flex items-center gap-2 text-sm font-semibold text-wine-700">
@@ -39,7 +40,7 @@ export function BookingDetails({ booking: b }: { booking: Booking }) {
       <dl className="grid gap-4 px-6 sm:grid-cols-2">
         <div>
           <dt className="text-xs font-semibold text-ink-muted uppercase">
-            {t('booking.reference')}
+            {t(API_URL ? 'booking.id' : 'booking.reference')}
           </dt>
           <dd className="font-mono text-lg font-bold" data-testid="booking-reference">
             {b.reference}
@@ -68,7 +69,9 @@ export function BookingDetails({ booking: b }: { booking: Booking }) {
               </span>
             </span>
             <span className="tabular-nums">
-              {formatMoney(i.unitPriceMinor, b.currency, locale)}
+              {i.priceConfigured === false
+                ? t('seats.priceUnavailable')
+                : formatMoney(i.unitPriceMinor, b.currency, locale)}
             </span>
           </li>
         ))}
@@ -87,7 +90,9 @@ export function BookingDetails({ booking: b }: { booking: Booking }) {
           </span>
         </div>
       )}
-      <p className="bg-paper px-6 py-3 text-sm text-ink-muted">{t('booking.note')}</p>
+      <p className="bg-paper px-6 py-3 text-sm text-ink-muted">
+        {t(API_URL ? 'booking.liveNote' : 'booking.note')}
+      </p>
     </div>
   );
 }

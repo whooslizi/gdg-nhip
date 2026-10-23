@@ -17,18 +17,19 @@ export class ApiError extends Error {
 
 export async function api<T>(
   path: string,
-  init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
+  init: { method?: string; body?: unknown; signal?: AbortSignal; authToken?: string } = {},
 ) {
   if (!API_URL) return mockApi<T>(path, init);
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
       method: init.method ?? 'GET',
-      credentials: 'include',
+      credentials: 'omit',
       signal: init.signal,
       // X-Requested-With is required by the server's CSRF check.
       headers: {
         'X-Requested-With': 'fetch',
+        ...(init.authToken && { Authorization: `Bearer ${init.authToken}` }),
         ...(init.body !== undefined && { 'Content-Type': 'application/json' }),
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
@@ -37,10 +38,17 @@ export async function api<T>(
     if ((error as Error).name === 'AbortError') throw error;
     throw new ApiError(0, 'NETWORK', 'Cannot reach the server. Check your connection.');
   }
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const e = data?.error;
-    throw new ApiError(res.status, e?.code ?? 'UNKNOWN', e?.message ?? res.statusText, e?.details);
+  const payload = await res.json().catch(() => null);
+  if (!res.ok || payload?.success === false) {
+    const error = payload?.error ?? payload;
+    throw new ApiError(
+      res.status,
+      error?.code ?? 'UNKNOWN',
+      error?.message ?? res.statusText,
+      error?.details,
+    );
   }
-  return data as T;
+  return (payload && typeof payload === 'object' && 'success' in payload && 'data' in payload
+    ? payload.data
+    : payload) as T;
 }

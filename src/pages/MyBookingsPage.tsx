@@ -1,10 +1,10 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { BookingDetails } from '@/components/BookingDetails';
 import { CancelBooking } from '@/components/CancelBooking';
 import { Button } from '@/components/ui/Button';
-import { ApiError } from '@/lib/api-client';
+import { API_URL, ApiError } from '@/lib/api-client';
 import { formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
 import { listMyBookings, lookupBooking } from '@/services/booking';
@@ -15,10 +15,15 @@ const input =
 
 export function MyBookingsPage() {
   const { t, locale } = useI18n();
+  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(() => searchParams.get('bookingId') ?? '');
   const [cancelled, setCancelled] = useState<Booking | null>(null);
-  const lookup = useMutation({ mutationFn: () => lookupBooking(email.trim(), code.trim()) });
+  const lookup = useMutation({
+    mutationFn: () => lookupBooking(email.trim(), code.trim()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] }),
+  });
   const mine = useQuery({ queryKey: ['bookings'], queryFn: listMyBookings });
   const booking = cancelled ?? lookup.data;
 
@@ -31,7 +36,9 @@ export function MyBookingsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-3xl font-bold">{t('lookup.title')}</h1>
-      <p className="mt-2 text-ink-muted">{t('lookup.body')}</p>
+      <p className="mt-2 text-ink-muted">
+        {t(API_URL ? 'lookup.liveBody' : 'lookup.body')}
+      </p>
       <form
         onSubmit={submit}
         className="mt-6 grid gap-4 sm:grid-cols-[1fr_200px_auto] sm:items-end"
@@ -48,11 +55,12 @@ export function MyBookingsPage() {
           />
         </label>
         <label className="text-sm font-medium">
-          {t('lookup.code')}
+          {t(API_URL ? 'lookup.bookingId' : 'lookup.code')}
           <input
             required
-            pattern="[A-Za-z0-9]{4}-[A-Za-z0-9]{4}"
-            placeholder="XXXX-XXXX"
+            inputMode={API_URL ? 'text' : undefined}
+            pattern={API_URL ? '(BK-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}|[1-9][0-9]*)' : '[A-Za-z0-9]{4}-[A-Za-z0-9]{4}'}
+            placeholder={API_URL ? 'BK-XXXX-XXXX' : 'XXXX-XXXX'}
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             className={`${input} font-mono tracking-widest`}

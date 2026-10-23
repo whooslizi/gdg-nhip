@@ -3,6 +3,8 @@ const {
   cancelHold: cancelHoldService,
 } = require("../services/hold.service");
 
+const MAX_SEATS_PER_HOLD = 8;
+
 async function createHold(req, res) {
   try {
     const { showtimeId, seatIds } = req.body;
@@ -27,6 +29,13 @@ async function createHold(req, res) {
       return res.status(400).json({
         success: false,
         message: "seatIds must be a non-empty array of positive integers",
+      });
+    }
+
+    if (seatIds.length > MAX_SEATS_PER_HOLD) {
+      return res.status(400).json({
+        success: false,
+        message: `You can hold at most ${MAX_SEATS_PER_HOLD} seats`,
       });
     }
 
