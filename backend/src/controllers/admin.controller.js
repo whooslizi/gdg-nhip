@@ -8,6 +8,14 @@ function parseId(value) {
 function handleError(res, error) {
   console.error("Admin API error:", error);
 
+  if (error.code === "23503") {
+    return res.status(409).json({
+      success: false,
+      code: "FACILITY_IN_USE",
+      message: "This item is referenced by other records and cannot be deleted",
+    });
+  }
+
   if (error.message === "No valid fields to update") {
     return res.status(400).json({
       success: false,
@@ -19,6 +27,97 @@ function handleError(res, error) {
     success: false,
     message: "Internal server error",
   });
+}
+
+async function deleteFacility(req, res, kind) {
+  const id = parseId(req.params[`${kind}Id`]);
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid ${kind}Id`,
+    });
+  }
+
+  try {
+    const data = await adminService[`delete${kind[0].toUpperCase()}${kind.slice(1)}`](id);
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: `${kind} not found`,
+      });
+    }
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return handleError(res, error);
+  }
+}
+
+const deleteArea = (req, res) => deleteFacility(req, res, "area");
+const deleteCinema = (req, res) => deleteFacility(req, res, "cinema");
+const deleteRoom = (req, res) => deleteFacility(req, res, "room");
+
+async function createArea(req, res) {
+  const areaName = req.body?.areaName;
+  if (typeof areaName !== "string" || !areaName.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "areaName is required",
+    });
+  }
+
+  try {
+    const data = await adminService.createArea(areaName.trim());
+    return res.status(201).json({ success: true, data });
+  } catch (error) {
+    return handleError(res, error);
+  }
+}
+
+async function createCinema(req, res) {
+  const { cinemaName, areaId, locate } = req.body ?? {};
+  if (
+    typeof cinemaName !== "string" ||
+    !cinemaName.trim() ||
+    !parseId(areaId) ||
+    typeof locate !== "string" ||
+    !locate.trim()
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "cinemaName, valid areaId, and locate are required",
+    });
+  }
+
+  try {
+    const data = await adminService.createCinema({
+      cinemaName: cinemaName.trim(),
+      areaId: parseId(areaId),
+      locate: locate.trim(),
+    });
+    return res.status(201).json({ success: true, data });
+  } catch (error) {
+    return handleError(res, error);
+  }
+}
+
+async function createRoom(req, res) {
+  const { roomName, cinemaId } = req.body ?? {};
+  if (typeof roomName !== "string" || !roomName.trim() || !parseId(cinemaId)) {
+    return res.status(400).json({
+      success: false,
+      message: "roomName and valid cinemaId are required",
+    });
+  }
+
+  try {
+    const data = await adminService.createRoom({
+      roomName: roomName.trim(),
+      cinemaId: parseId(cinemaId),
+    });
+    return res.status(201).json({ success: true, data });
+  } catch (error) {
+    return handleError(res, error);
+  }
 }
 
 async function createEvent(req, res) {
@@ -141,6 +240,12 @@ async function updateShowtime(req, res) {
 }
 
 module.exports = {
+  deleteArea,
+  deleteCinema,
+  deleteRoom,
+  createArea,
+  createCinema,
+  createRoom,
   createEvent,
   updateEvent,
   createShowtime,

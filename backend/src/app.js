@@ -7,6 +7,7 @@ const cinemaRoutes = require("./routes/cinema.routes");
 const showtimeRoutes = require("./routes/showtime.routes");
 const holdRoutes = require("./routes/hold.routes");
 const paymentRoutes = require("./routes/payment.routes");
+const bookingRoutes = require("./routes/booking.routes");
 const adminRoutes = require("./routes/admin.routes");
 
 const app = express();
@@ -24,6 +25,7 @@ app.use("/api/cinemas", cinemaRoutes);
 app.use("/api/showtimes", showtimeRoutes);
 app.use("/api/holds", holdRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/bookings", bookingRoutes);
 app.use("/api/admin", adminRoutes);
 
 app.use((req, res) => {

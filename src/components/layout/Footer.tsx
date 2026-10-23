@@ -18,6 +18,9 @@ export function Footer() {
           <Link to="/my-bookings" className="block font-semibold text-white hover:underline">
             {t('footer.cancel')}
           </Link>
+          <Link to="/admin" className="block font-semibold text-white hover:underline">
+            Quản trị
+          </Link>
           <p className="max-w-sm text-blush-200/70">{t('footer.note')}</p>
         </div>
       </div>

@@ -9,10 +9,10 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/States';
 import { useSeatSocket } from '@/hooks/useSeatSocket';
 import { ApiError } from '@/lib/api-client';
-import { formatMoney } from '@/lib/format';
+import { formatDateTime, formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
 import { cancelHold, confirmHold, createHold, getHold } from '@/services/booking';
-import { getEvent, getSeatMap } from '@/services/events';
+import { getEvent, getSeatMap, listShowtimes } from '@/services/events';
 import type { Seat, SeatChangeMessage, SeatMap } from '@/types/api';
 
 export function SeatSelectionPage() {
@@ -31,11 +31,23 @@ export function SeatSelectionPage() {
     queryFn: ({ signal }) => getEvent(slug, signal),
   });
   const eventId = eventQuery.data?.id;
-  const mapKey = ['seat-map', eventId];
+  const showtimesQuery = useQuery({
+    queryKey: ['showtimes', eventId],
+    queryFn: ({ signal }) => listShowtimes(eventId!, eventQuery.data?.startAt ?? null, signal),
+    enabled: !!eventId,
+  });
+  const showtimes = showtimesQuery.data ?? [];
+  const [showtimeSelection, setShowtimeSelection] = useState<{
+    eventId: string;
+    showtimeId: string;
+  } | null>(null);
+  const selectedShowtimeId =
+    showtimeSelection?.eventId === eventId ? showtimeSelection?.showtimeId : showtimes[0]?.id;
+  const mapKey = ['seat-map', eventId, selectedShowtimeId];
   const mapQuery = useQuery({
     queryKey: mapKey,
-    queryFn: ({ signal }) => getSeatMap(eventId!, signal),
-    enabled: !!eventId,
+    queryFn: ({ signal }) => getSeatMap(eventId!, selectedShowtimeId!, signal),
+    enabled: !!eventId && !!selectedShowtimeId,
     refetchInterval: 30_000, // in case the socket is down
   });
   const map = mapQuery.data;
@@ -80,6 +92,7 @@ export function SeatSelectionPage() {
       createHold(
         eventId!,
         selectedSeats.map((s) => s.id),
+        map,
       ),
     onSuccess: (newHold) => {
       queryClient.setQueryData(['hold', newHold.id], newHold);
@@ -120,7 +133,8 @@ export function SeatSelectionPage() {
   const live = useSeatSocket(eventId, onSeatChange);
 
   const confirm = useMutation({
-    mutationFn: (email: string) => confirmHold(currentHoldId!, email),
+    mutationFn: (buyer: { name: string; phone: string; email: string }) =>
+      confirmHold(currentHoldId!, buyer, hold?.totalMinor ?? 0),
     onSuccess: (booking) => {
       queryClient.setQueryData(['booking', booking.id], booking);
       navigate(`/booking/${booking.id}`);
@@ -170,15 +184,29 @@ export function SeatSelectionPage() {
     [map, t],
   );
 
-  if (eventQuery.isError || mapQuery.isError) {
-    const error = (eventQuery.error ?? mapQuery.error) as Error;
+  if (eventQuery.isError || showtimesQuery.isError || mapQuery.isError) {
+    const error = (eventQuery.error ?? showtimesQuery.error ?? mapQuery.error) as Error;
     if (error instanceof ApiError && error.status === 404) return <Navigate to="/404" replace />;
     return (
       <div className="px-4 py-16 sm:px-10">
         <ErrorState
           message={error.message}
-          onRetry={() => (eventQuery.isError ? eventQuery.refetch() : mapQuery.refetch())}
+          onRetry={() =>
+            eventQuery.isError
+              ? eventQuery.refetch()
+              : showtimesQuery.isError
+                ? showtimesQuery.refetch()
+                : mapQuery.refetch()
+          }
         />
+      </div>
+    );
+  }
+
+  if (showtimesQuery.isSuccess && showtimes.length === 0) {
+    return (
+      <div className="px-4 py-16 sm:px-10">
+        <ErrorState message={t('seats.noShowtimes')} onRetry={() => showtimesQuery.refetch()} />
       </div>
     );
   }
@@ -203,22 +231,32 @@ export function SeatSelectionPage() {
     <BookingSummary
       mode="hold"
       hold={hold}
+      buyerDetailsRequired={!!map.showtimeId}
+      canConfirm={map.priceConfigured !== false}
       confirming={confirm.isPending}
       releasing={release.isPending}
-      onConfirm={(email) => confirm.mutate(email)}
+      onConfirm={(buyer) => confirm.mutate(buyer)}
       onRelease={() => release.mutate()}
       onExpire={onExpire}
-      message={shownMessage}
+      message={shownMessage ?? (map.priceConfigured === false ? t('seats.paymentUnavailable') : null)}
     />
   ) : (
     <BookingSummary
       mode="select"
       seats={selectedSeats}
       currency={currency}
+      pricesConfigured={map.priceConfigured !== false}
       canReserve={bookable}
       reserving={reserve.isPending}
       onReserve={() => reserve.mutate()}
-      message={shownMessage ?? (bookable ? null : t('seats.notOpen'))}
+      message={
+        shownMessage ??
+        (map.priceConfigured === false
+          ? t('seats.paymentUnavailable')
+          : bookable
+            ? null
+            : t('seats.notOpen'))
+      }
     />
   );
 
@@ -240,6 +278,26 @@ export function SeatSelectionPage() {
           <h1 className="font-display text-3xl font-bold">{t('seats.title')}</h1>
           {map.venue && <p className="mt-1 text-sm text-ink-muted">{map.venue.name}</p>}
         </div>
+        <label className="grid min-w-56 gap-1.5 text-sm font-medium">
+          <span>{t('seats.showtime')}</span>
+          <select
+            value={selectedShowtimeId ?? ''}
+            disabled={holdActive || reserve.isPending}
+            onChange={(event) => {
+              setShowtimeSelection({ eventId: eventId!, showtimeId: event.target.value });
+              setSelected(new Set());
+              setHoldId(null);
+              setMessage(null);
+            }}
+            className="h-10 rounded-md border border-line bg-surface px-3"
+          >
+            {showtimes.map((showtime) => (
+              <option key={showtime.id} value={showtime.id}>
+                {formatDateTime(showtime.startAt, locale)} · #{showtime.id}
+              </option>
+            ))}
+          </select>
+        </label>
         {live !== null && (
           <p
             className={`flex items-center gap-1.5 text-xs ${live ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-300'}`}
@@ -265,14 +323,18 @@ export function SeatSelectionPage() {
             interactive={bookable && !holdActive}
             onToggle={toggle}
           />
-          <ul className="flex flex-wrap gap-4 text-sm text-ink-muted">
-            {map.ticketTypes.map((tt) => (
-              <li key={tt.id}>
-                <span className="font-semibold text-ink">{tt.name}</span> ·{' '}
-                {formatMoney(tt.priceMinor, tt.currency, locale)}
-              </li>
-            ))}
-          </ul>
+          {map.priceConfigured === false ? (
+            <p className="text-sm text-ink-muted">{t('seats.paymentUnavailable')}</p>
+          ) : (
+            <ul className="flex flex-wrap gap-4 text-sm text-ink-muted">
+              {map.ticketTypes.map((tt) => (
+                <li key={tt.id}>
+                  <span className="font-semibold text-ink">{tt.name}</span> ·{' '}
+                  {formatMoney(tt.priceMinor, tt.currency, locale)}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <aside className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.2)] lg:sticky lg:top-6 lg:rounded-xl lg:border lg:shadow-none">
@@ -286,9 +348,13 @@ export function SeatSelectionPage() {
               <span className="font-semibold">
                 {t('seats.selectedCount', { count: mobileCount })}
               </span>
-              <span className="ml-2 text-ink-muted tabular-nums">
-                {formatMoney(mobileTotal, currency, locale)}
-              </span>
+              {mobileCount > 0 && (
+                <span className="ml-2 text-ink-muted tabular-nums">
+                  {map.priceConfigured === false
+                    ? t('seats.priceUnavailable')
+                    : formatMoney(mobileTotal, currency, locale)}
+                </span>
+              )}
             </span>
             <span className="flex items-center gap-1 text-sm font-medium text-wine-700">
               {sheetOpen ? t('seats.hideSummary') : t('seats.showSummary')}

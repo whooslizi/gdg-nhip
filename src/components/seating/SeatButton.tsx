@@ -60,7 +60,11 @@ export const SeatButton = memo(function SeatButton({
   const { t, locale } = useI18n();
   const state = seatVisualState(seat, selected);
   const selectable = interactive && (state === 'available' || state === 'selected');
-  const label = `${t('seats.seat')} ${seat.seatLabel}, ${tierName}, ${formatMoney(seat.priceMinor, currency, locale)} — ${t(stateKey[state])}`;
+  const price =
+    seat.priceConfigured === false
+      ? t('seats.priceUnavailable')
+      : formatMoney(seat.priceMinor, currency, locale);
+  const label = `${t('seats.seat')} ${seat.seatLabel}, ${tierName}, ${price} — ${t(stateKey[state])}`;
   return (
     <button
       type="button"

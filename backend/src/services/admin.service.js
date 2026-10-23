@@ -1,6 +1,75 @@
 
 const supabase = require("../config/supabase");
 
+async function createArea(areaName) {
+  const { data, error } = await supabase
+    .from("areas")
+    .insert({ areaname: areaName })
+    .select("areaid, areaname")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function createCinema({ cinemaName, areaId, locate }) {
+  const { data, error } = await supabase
+    .from("cinemas")
+    .insert({ cinemaname: cinemaName, areaid: areaId, locate })
+    .select("cinemaid, cinemaname, areaid, locate")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function createRoom({ roomName, cinemaId }) {
+  const { data, error } = await supabase
+    .from("rooms")
+    .insert({ roomname: roomName, cinemaid: cinemaId })
+    .select("roomid, roomname, cinemaid")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function deleteArea(areaId) {
+  const { data, error } = await supabase
+    .from("areas")
+    .delete()
+    .eq("areaid", areaId)
+    .select("areaid")
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+async function deleteCinema(cinemaId) {
+  const { data, error } = await supabase
+    .from("cinemas")
+    .delete()
+    .eq("cinemaid", cinemaId)
+    .select("cinemaid")
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+async function deleteRoom(roomId) {
+  const { data, error } = await supabase
+    .from("rooms")
+    .delete()
+    .eq("roomid", roomId)
+    .select("roomid")
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 async function createEvent(payload) {
   const { data, error } = await supabase
     .from("events")
@@ -109,6 +178,12 @@ async function updateShowtime(showtimeId, payload) {
 }
 
 module.exports = {
+  createArea,
+  createCinema,
+  createRoom,
+  deleteArea,
+  deleteCinema,
+  deleteRoom,
   createEvent,
   updateEvent,
   createShowtime,

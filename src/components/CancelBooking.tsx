@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/Button';
-import { ApiError } from '@/lib/api-client';
+import { API_URL, ApiError } from '@/lib/api-client';
 import { formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
 import { cancelBooking } from '@/services/booking';
@@ -22,7 +22,7 @@ export function CancelBooking({
   const [cancelCode, setCancelCode] = useState('');
   const queryClient = useQueryClient();
   const cancel = useMutation({
-    mutationFn: () => cancelBooking(booking.id, cancelCode.trim()),
+    mutationFn: () => cancelBooking(booking.id, API_URL ? booking.email : cancelCode.trim()),
     onSuccess: (b) => {
       onCancelled?.(b);
       return queryClient.invalidateQueries();
@@ -38,9 +38,11 @@ export function CancelBooking({
       {booking.status !== 'CANCELLED' && !cancel.data && (
         <form onSubmit={submitCancel} className="mt-6 rounded-xl border border-line p-6">
           <h2 className="text-lg font-bold">{t('cancel.title')}</h2>
-          <p className="mt-1 text-sm text-ink-muted">{t('cancel.body')}</p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-            <label className="flex-1 text-sm font-medium">
+          <p className="mt-1 text-sm text-ink-muted">
+            {t(API_URL ? 'cancel.liveBody' : 'cancel.body')}
+          </p>
+          {!API_URL && (
+            <label className="mt-4 block text-sm font-medium">
               {t('cancel.code')}
               <input
                 required
@@ -52,6 +54,8 @@ export function CancelBooking({
                 className={`${input} font-mono tracking-widest`}
               />
             </label>
+          )}
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
             <Button type="submit" size="lg" disabled={cancel.isPending}>
               {t(cancel.isPending ? 'cancel.submitting' : 'cancel.submit')}
             </Button>

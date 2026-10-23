@@ -1,40 +1,44 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { event, mockFetch, renderRoute } from '@/test/utils';
+import { mockFetch, renderRoute } from '@/test/utils';
 import { EventBrowser } from './EventBrowser';
 
-const categories = { items: [{ slug: 'sports', nameEn: 'Sports', nameVi: 'Thể thao' }] };
-const page = (items: unknown[]) => ({
-  body: { items, page: 1, total: items.length, totalPages: 1 },
-});
+const events = [
+  {
+    eventid: 1,
+    eventname: 'GDG-HUST 20/10 Concert: Bloom with Us',
+    directors: ['GDG-HUST'],
+    types: ['Sports'],
+    languages: ['Vietnamese'],
+    poster: null,
+    duration: 120,
+    startat: '2026-10-20',
+    endat: '2026-10-20',
+  },
+];
 
 describe('EventBrowser', () => {
-  it('lists events and filters by category tab through the API', async () => {
-    const fetch = mockFetch((url) => {
-      if (url.pathname.endsWith('/categories')) return { body: categories };
-      if (url.pathname.endsWith('/events'))
-        return page(url.searchParams.get('category') === 'sports' ? [] : [event()]);
+  it('lists REST events and filters by their event type', async () => {
+    mockFetch((url) => {
+      if (url.pathname.endsWith('/events')) return { body: events };
     });
     renderRoute(<EventBrowser />);
     expect(await screen.findByRole('link', { name: /Bloom with Us/ })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Sports' }));
-    expect(await screen.findByText('No events yet')).toBeInTheDocument();
-    expect(fetch.mock.calls.some(([u]) => String(u).includes('category=sports'))).toBe(true);
+    expect(screen.getByRole('link', { name: /Bloom with Us/ })).toBeInTheDocument();
   });
 
-  it('shows the search term and passes it on', async () => {
-    const fetch = mockFetch((url) => {
-      if (url.pathname.endsWith('/categories')) return { body: categories };
-      if (url.pathname.endsWith('/events')) return page([]);
+  it('filters REST events by the entered search term', async () => {
+    mockFetch((url) => {
+      if (url.pathname.endsWith('/events')) return { body: events };
     });
     renderRoute(<EventBrowser />, { path: '/events', url: '/events?search=bloom' });
     expect(await screen.findByRole('heading', { name: 'Results for “bloom”' })).toBeInTheDocument();
-    expect(fetch.mock.calls.some(([u]) => String(u).includes('search=bloom'))).toBe(true);
+    expect(await screen.findByRole('link', { name: /Bloom with Us/ })).toBeInTheDocument();
   });
 
   it('offers a retry when loading fails', async () => {
     mockFetch((url) => {
-      if (url.pathname.endsWith('/categories')) return { body: categories };
       if (url.pathname.endsWith('/events'))
         return { status: 500, body: { error: { code: 'INTERNAL', message: 'down' } } };
     });
