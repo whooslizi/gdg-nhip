@@ -62,9 +62,20 @@ async function getPayment(req, res) {
       });
     }
 
+    const userEmail = req.query.email;
+    if (typeof userEmail !== "string" || !userEmail.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "email is required",
+      });
+    }
+
     const payment = await paymentService.getPaymentById(paymentId);
 
-    if (!payment) {
+    if (
+      !payment ||
+      payment.userEmail.toLowerCase() !== userEmail.trim().toLowerCase()
+    ) {
       return res.status(404).json({
         success: false,
         message: "Payment not found",
