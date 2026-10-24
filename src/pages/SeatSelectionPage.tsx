@@ -62,6 +62,24 @@ export function SeatSelectionPage() {
   const hold = holdQuery.data?.id === currentHoldId ? holdQuery.data : undefined;
   const holdActive = hold?.status === 'ACTIVE';
 
+  // The REST seat map can't tell whose hold a seat is in, so mark our own held seats here.
+  const shownMap = useMemo(() => {
+    if (!map || !hold || !holdActive) return map;
+    const mine = new Set(hold.items.map((item) => item.eventSeatingId));
+    return {
+      ...map,
+      sections: map.sections.map((section) => ({
+        ...section,
+        rows: section.rows.map((row) => ({
+          ...row,
+          seats: row.seats.map((seat) =>
+            seat.status === 'HELD' && mine.has(seat.id) ? { ...seat, heldByMe: true } : seat,
+          ),
+        })),
+      })),
+    };
+  }, [map, hold, holdActive]);
+
   const seatsById = useMemo(() => {
     const m = new Map<string, Seat>();
     map?.sections.forEach((s) =>
@@ -318,7 +336,7 @@ export function SeatSelectionPage() {
         <div className="min-w-0 space-y-4">
           <SeatLegend />
           <SeatingMap
-            map={map}
+            map={shownMap ?? map}
             selected={selected}
             interactive={bookable && !holdActive}
             onToggle={toggle}
