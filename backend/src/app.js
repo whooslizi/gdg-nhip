@@ -12,6 +12,8 @@ const bookingRoutes = require("./routes/booking.routes");
 const adminRoutes = require("./routes/admin.routes");
 
 const app = express();
+// Vercel's proxy puts the real client IP in X-Forwarded-For; without this every visitor shares one rate-limit bucket.
+app.set("trust proxy", 1);
 
 app.use(
   cors({

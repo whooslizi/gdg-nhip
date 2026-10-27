@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, CalendarDays, Globe, Mail, MapPin } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Navigate, useParams } from 'react-router';
 import { BookingCta } from '@/components/events/BookingCta';
 import { Poster } from '@/components/events/Poster';
@@ -10,7 +10,7 @@ import { ErrorState } from '@/components/ui/States';
 import { ApiError } from '@/lib/api-client';
 import { categoryName, formatDateTime, formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
-import { getEvent } from '@/services/events';
+import { getEvent, listShowtimes } from '@/services/events';
 
 function Fact({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
@@ -31,6 +31,17 @@ export function EventDetailPage() {
     queryKey: ['event', slug],
     queryFn: ({ signal }) => getEvent(slug, signal),
   });
+  const queryClient = useQueryClient();
+  const eventId = query.data?.id;
+  const startAt = query.data?.startAt ?? null;
+  // Warm the seat page's showtimes while the user reads the details.
+  useEffect(() => {
+    if (eventId)
+      queryClient.prefetchQuery({
+        queryKey: ['showtimes', eventId],
+        queryFn: ({ signal }) => listShowtimes(eventId, startAt, signal),
+      });
+  }, [queryClient, eventId, startAt]);
 
   if (query.isPending) return <Skeleton className="aspect-[3.3/1] rounded-none" />;
   if (query.isError) {

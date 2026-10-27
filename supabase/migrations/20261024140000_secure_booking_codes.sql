@@ -1,7 +1,3 @@
--- The previous generator took 4 *consecutive* alphabet letters from one random
--- start, so each half had only ~31 values (some shorter than 4 chars) and codes
--- were guessable. Pick every character independently from gen_random_uuid()'s
--- random bytes instead (bytes 6 and 8 carry fixed UUID version/variant bits).
 CREATE OR REPLACE FUNCTION public.generate_booking_code()
 RETURNS text
 LANGUAGE plpgsql

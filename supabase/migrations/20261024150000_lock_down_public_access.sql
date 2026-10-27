@@ -1,4 +1,4 @@
--- The backend talks to Supabase with the service_role key, which bypasses RLS.
+ĐI -- The backend talks to Supabase with the service_role key, which bypasses RLS.
 -- Without this, anyone holding the project's anon key could read bookings
 -- (names, phones, emails) or call process_mock_payment / cancel_booking
 -- directly and skip every check in the API.

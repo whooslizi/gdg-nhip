@@ -51,5 +51,5 @@ async function getCinemaRooms(req, res) {
 
 module.exports = { 
     getCinemaById,
-    getCinemaRooms 
-};
+    getCinemaRooms, 
+  };

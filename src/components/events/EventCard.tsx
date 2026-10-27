@@ -1,13 +1,22 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { categoryName, placeAndDate } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
+import { getEvent } from '@/services/events';
 import type { EventSummary } from '@/types/api';
 import { Poster } from './Poster';
 import { categoryTone, stateTone } from './stateStyles';
 
 export function EventCard({ event }: { event: EventSummary }) {
   const { t, locale } = useI18n();
+  const queryClient = useQueryClient();
   const category = event.categories[0];
+  // Warm the detail page's cache before the click lands.
+  const prefetch = () =>
+    queryClient.prefetchQuery({
+      queryKey: ['event', event.slug],
+      queryFn: ({ signal }) => getEvent(event.slug, signal),
+    });
   return (
     <article className="group relative">
       <span
@@ -27,6 +36,9 @@ export function EventCard({ event }: { event: EventSummary }) {
       <h3 className="mt-1 line-clamp-2 text-lg leading-snug font-bold uppercase">
         <Link
           to={`/events/${event.slug}`}
+          onMouseEnter={prefetch}
+          onFocus={prefetch}
+          onTouchStart={prefetch}
           className="after:absolute after:inset-0 group-hover:text-wine-700"
         >
           {event.title}
