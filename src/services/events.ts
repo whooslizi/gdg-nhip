@@ -77,9 +77,22 @@ const toSummary = (event: RestEvent, startAt?: string): EventSummary => {
 const fold = (value: string) =>
   value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
 
-async function getRestEvents(signal?: AbortSignal) {
-  return api<RestEvent[]>('/events', { signal });
+// Home, navbar, browser and detail all need this list; share one request instead of a ~1s round trip each.
+// shortcut: 30s module cache with no abort signal, move to a query key if events start changing often.
+let restEvents: { at: number; promise: Promise<RestEvent[]> } | null = null;
+function getRestEvents() {
+  if (!restEvents || Date.now() - restEvents.at > 30_000) {
+    const promise = api<RestEvent[]>('/events');
+    promise.catch(() => {
+      if (restEvents?.promise === promise) restEvents = null;
+    });
+    restEvents = { at: Date.now(), promise };
+  }
+  return restEvents.promise;
 }
+export const clearEventsCache = () => {
+  restEvents = null;
+};
 
 export async function listEvents(query: EventQuery, signal?: AbortSignal) {
   if (!API_URL) {
@@ -88,7 +101,7 @@ export async function listEvents(query: EventQuery, signal?: AbortSignal) {
     return api<Page<EventSummary>>(`/events?${params}`, { signal });
   }
 
-  const source = await getRestEvents(signal);
+  const source = await getRestEvents();
   const search = fold(query.search ?? '');
   const found = source
     .filter((event) => !query.category || event.types?.some((type) => slugify(type) === query.category))
@@ -114,16 +127,16 @@ export const listFeaturedEvents = async (signal?: AbortSignal) => {
 export async function getEvent(slug: string, signal?: AbortSignal) {
   if (!API_URL) return api<EventDetail>(`/events/${encodeURIComponent(slug)}`, { signal });
 
-  const events = await getRestEvents(signal);
+  const events = await getRestEvents();
   const match = events.find((event) => String(event.eventid) === slug || slugify(event.eventname) === slug);
   if (!match) throw new ApiError(404, 'NOT_FOUND', 'Event not found');
 
-  const [event, showtimeResponse] = await Promise.all([
-    api<RestEvent>(`/events/${match.eventid}`, { signal }),
-    api<{ eventId: number; showtimes: RestShowtime[] }>(`/events/${match.eventid}/showtimes`, {
-      signal,
-    }),
-  ]);
+  // The list row already has every column, so only showtimes need a second round trip.
+  const event = match;
+  const showtimeResponse = await api<{ eventId: number; showtimes: RestShowtime[] }>(
+    `/events/${match.eventid}/showtimes`,
+    { signal },
+  );
   const firstShowtime = showtimeResponse.showtimes[0];
   const summary = toSummary(event, firstShowtime?.startat);
   return {
@@ -144,7 +157,7 @@ export async function getEvent(slug: string, signal?: AbortSignal) {
 
 export async function listCategories(signal?: AbortSignal) {
   if (!API_URL) return api<{ items: Category[] }>('/categories', { signal }).then((r) => r.items);
-  const events = await getRestEvents(signal);
+  const events = await getRestEvents();
   const names = [...new Set(events.flatMap((event) => event.types ?? []))];
   return names.map(categoryFor);
 }
@@ -189,13 +202,14 @@ export async function getSeatMap(
 ) {
   if (!API_URL) return api<SeatMap>(`/events/${eventId}/seats`, { signal });
 
+  const eventPromise = api<RestEvent>(`/events/${eventId}`, { signal });
   const result = await api<{
     eventId: number;
     showtimeId: number;
     roomId: number;
     seats: RestSeat[];
   }>(`/showtimes/${showtimeId}/seats`, { signal });
-  const event = await api<RestEvent>(`/events/${eventId}`, { signal });
+  const event = await eventPromise;
   const statusOf = (status: string): SeatStatus => {
     switch (status.toLowerCase()) {
       case 'holding':
