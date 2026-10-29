@@ -90,6 +90,10 @@ jobs:
             yarn) yarn audit --level high ;;
           esac
 
+      - name: Audit backend dependencies (fails on high/critical)
+        working-directory: backend
+        run: npm audit --audit-level=high
+
   dependency-review:
     name: dependency-review
     if: github.event_name == 'pull_request'
