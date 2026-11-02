@@ -10,6 +10,7 @@ const holdRoutes = require("./routes/hold.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const bookingRoutes = require("./routes/booking.routes");
 const adminRoutes = require("./routes/admin.routes");
+const waitingRoomRoutes = require("./routes/waiting-room.routes");
 
 const app = express();
 // Vercel's proxy puts the real client IP in X-Forwarded-For; without this every visitor shares one rate-limit bucket.
@@ -31,6 +32,10 @@ const publicLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeader
 app.use("/api/holds", publicLimiter, holdRoutes);
 app.use("/api/payments", publicLimiter, paymentRoutes);
 app.use("/api/bookings", publicLimiter, bookingRoutes);
+// Separate budget so queue heartbeats (12/min per waiting tab) never eat into the hold/payment
+// limit; it is generous because a whole campus can share one IP.
+const queueLimiter = rateLimit({ windowMs: 60 * 1000, limit: 600, standardHeaders: true, legacyHeaders: false });
+app.use("/api/queue", queueLimiter, waitingRoomRoutes);
 app.use("/api/admin", adminRoutes);
 
 app.use((req, res) => {

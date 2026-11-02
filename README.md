@@ -35,6 +35,10 @@ Holding seats, booking lookup and cancellation require a Cloudflare Turnstile to
 
 For local development use Cloudflare's test keys: sitekey `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA` (always passes). Never deploy a test secret. Without `TURNSTILE_SECRET_KEY` the backend skips the check in development and refuses these requests with 503 in production; with a real secret, production also needs `TURNSTILE_HOSTNAMES`. Frontend-only mode (no `VITE_API_BASE_URL`) never shows the widget.
 
+## Waiting room
+
+The seat map sits behind a queue (`/api/queue`, table `waiting_room`). Each visit to the seat page joins with a Turnstile check and sends a heartbeat every few seconds. Leaving or reloading the page gives the place up (`/api/queue/leave`, or after 30 quiet seconds), so coming back means queueing again. When it's their turn, guests get 10 seconds to read the rules while a second Turnstile check runs at the gate (`/api/queue/gate`); the seat map opens once both are done ("Open now" skips the reading time, not the check). The public `POST /api/holds` only accepts seats from a visit that passed the gate and is still inside its 10 minutes, so a script can't skip the queue by calling it directly; admin holds (`/api/admin/holds`) are exempt. Up to `WAITING_ROOM_CAPACITY` guests per event (backend env, default 50) are on the seat map at once, each for 10 minutes, after which they go back to the end of the line. Set it to `1` locally and open two tabs to see the queue move. Frontend-only mode has no queue: the visitor is always first in line.
+
 ## Admin dashboard
 
 Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` in `backend/.env` to enable `/admin`.

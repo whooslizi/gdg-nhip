@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ApiError, API_URL } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/format';
+import { BuyTicketsPanel } from '@/components/admin/BuyTicketsPanel';
 import {
+  ADMIN_TOKEN_KEY as TOKEN_KEY,
   adminLogin,
   createAdminArea,
   createAdminCinema,
@@ -26,8 +28,6 @@ import {
   type AdminEvent,
   type AdminShowtime,
 } from '@/services/admin';
-
-const TOKEN_KEY = 'nhip-admin-session';
 const inputClass =
   'mt-1 h-11 w-full rounded-md border border-line bg-surface px-3 text-sm focus:border-wine-600 focus:outline-none';
 interface EventDraft {
@@ -85,7 +85,7 @@ export function AdminDashboardPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'events' | 'showtimes' | 'facilities'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'showtimes' | 'facilities' | 'tickets'>('events');
 
   const session = useQuery({
     queryKey: ['admin-session', token],
@@ -263,6 +263,14 @@ export function AdminDashboardPage() {
         >
           Cơ sở
         </button>
+        <button
+          type="button"
+          aria-pressed={activeTab === 'tickets'}
+          onClick={() => setActiveTab('tickets')}
+          className={`border-b-2 px-1 py-3 text-sm font-semibold ${activeTab === 'tickets' ? 'border-wine-700 text-wine-700' : 'border-transparent text-ink-muted'}`}
+        >
+          Bán vé
+        </button>
       </nav>
 
       {events.isPending ? (
@@ -273,6 +281,8 @@ export function AdminDashboardPage() {
         <EventsPanel events={events.data} token={token} onError={handleAdminError} />
       ) : activeTab === 'showtimes' ? (
         <ShowtimesPanel events={events.data} token={token} onError={handleAdminError} />
+      ) : activeTab === 'tickets' ? (
+        <BuyTicketsPanel events={events.data} />
       ) : (
         <FacilitiesPanel token={token} onError={handleAdminError} />
       )}

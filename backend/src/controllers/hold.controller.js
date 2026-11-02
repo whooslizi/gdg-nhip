@@ -2,95 +2,118 @@ const {
   holdSeats,
   cancelHold: cancelHoldService,
 } = require("../services/hold.service");
+const { mayHold: queueMayHold } = require("../services/waiting-room.service");
+const { UUID } = require("./waiting-room.controller");
 
 const MAX_SEATS_PER_HOLD = 8;
 
-async function createHold(req, res) {
-  try {
-    const { showtimeId, seatIds } = req.body;
+// `mayHold` checks that the buyer came through the waiting room's gate; null skips it (admins).
+// Both functions are injectable for tests.
+function holdHandler(maxSeats, { hold = holdSeats, mayHold = null } = {}) {
+  return async function createHold(req, res) {
+    try {
+      const { showtimeId, seatIds, queueSessionId } = req.body;
 
-    if (
-      !Number.isInteger(showtimeId) ||
-      showtimeId <= 0
-    ) {
-      return res.status(400).json({
+      if (
+        !Number.isInteger(showtimeId) ||
+        showtimeId <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "showtimeId must be a positive integer",
+        });
+      }
+
+      if (
+        !Array.isArray(seatIds) ||
+        seatIds.length === 0 ||
+        !seatIds.every(
+          (id) => Number.isInteger(id) && id > 0
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "seatIds must be a non-empty array of positive integers",
+        });
+      }
+
+      if (seatIds.length > maxSeats) {
+        return res.status(400).json({
+          success: false,
+          message: `You can hold at most ${maxSeats} seats`,
+        });
+      }
+
+      if (new Set(seatIds).size !== seatIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: "seatIds contains duplicate IDs",
+        });
+      }
+
+      if (
+        mayHold &&
+        (typeof queueSessionId !== "string" ||
+          !UUID.test(queueSessionId) ||
+          !(await mayHold(queueSessionId, showtimeId)))
+      ) {
+        return res.status(403).json({
+          success: false,
+          code: "QUEUE_REQUIRED",
+          message: "Your turn in the waiting room is over or missing. Please queue again.",
+        });
+      }
+
+      const result = await hold(showtimeId, seatIds);
+
+      return res.status(201).json({
+        success: true,
+        message: "Seats held successfully",
+        data: result,
+      });
+    } catch (error) {
+      console.error("Create hold failed:", error.message);
+
+      const message = error.message || "";
+
+      if (message.includes("Showtime not found")) {
+        return res.status(404).json({
+          success: false,
+          message: "Showtime not found",
+        });
+      }
+
+      if (
+        message.includes("unavailable")
+      ) {
+        return res.status(409).json({
+          success: false,
+          message: "Some seats are unavailable",
+        });
+      }
+
+      if (
+        message.includes("Invalid showtime") ||
+        message.includes("Duplicate seat IDs") ||
+        message.includes("do not exist for this showtime")
+      ) {
+        return res.status(400).json({
+          success: false,
+          message,
+        });
+      }
+
+      return res.status(500).json({
         success: false,
-        message: "showtimeId must be a positive integer",
+        message: "Internal server error",
       });
     }
-
-    if (
-      !Array.isArray(seatIds) ||
-      seatIds.length === 0 ||
-      !seatIds.every(
-        (id) => Number.isInteger(id) && id > 0
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "seatIds must be a non-empty array of positive integers",
-      });
-    }
-
-    if (seatIds.length > MAX_SEATS_PER_HOLD) {
-      return res.status(400).json({
-        success: false,
-        message: `You can hold at most ${MAX_SEATS_PER_HOLD} seats`,
-      });
-    }
-
-    if (new Set(seatIds).size !== seatIds.length) {
-      return res.status(400).json({
-        success: false,
-        message: "seatIds contains duplicate IDs",
-      });
-    }
-
-    const result = await holdSeats(showtimeId, seatIds);
-
-    return res.status(201).json({
-      success: true,
-      message: "Seats held successfully",
-      data: result,
-    });
-  } catch (error) {
-    console.error("Create hold failed:", error.message);
-
-    const message = error.message || "";
-
-    if (message.includes("Showtime not found")) {
-      return res.status(404).json({
-        success: false,
-        message: "Showtime not found",
-      });
-    }
-
-    if (
-      message.includes("unavailable")
-    ) {
-      return res.status(409).json({
-        success: false,
-        message: "Some seats are unavailable",
-      });
-    }
-
-    if (
-      message.includes("Invalid showtime") ||
-      message.includes("Duplicate seat IDs") ||
-      message.includes("do not exist for this showtime")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message,
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
+  };
 }
+
+const createHold = holdHandler(MAX_SEATS_PER_HOLD, { mayHold: queueMayHold });
+// Admins sell to groups and at the door, so their holds have no seat cap. Mounted behind requireAdmin.
+const createAdminHold = holdHandler(Infinity);
 
 async function cancelHold(req, res) {
   try {
@@ -116,4 +139,4 @@ async function cancelHold(req, res) {
   }
 }
 
-module.exports = { createHold, cancelHold };
+module.exports = { createHold, createAdminHold, holdHandler, cancelHold };

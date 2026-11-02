@@ -4,6 +4,7 @@ const router = express.Router();
 
 const adminController = require("../controllers/admin.controller");
 const adminAuthController = require("../controllers/admin-auth.controller");
+const { createAdminHold } = require("../controllers/hold.controller");
 
 // Coarse per-IP cap on top of the login lockout in admin-auth.service.
 router.use(rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false }));
@@ -11,6 +12,8 @@ router.use(rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: true, le
 router.post("/login", adminAuthController.login);
 router.get("/session", adminAuthController.requireAdmin, adminAuthController.getSession);
 router.use(adminAuthController.requireAdmin);
+
+router.post("/holds", createAdminHold);
 
 router.post("/areas", adminController.createArea);
 router.delete("/areas/:areaId", adminController.deleteArea);

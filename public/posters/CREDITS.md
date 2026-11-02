@@ -16,3 +16,4 @@ depict the actual events or venues.
 | File                     | Original                                                                                                                                | Author         | License |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------- |
 | ../media/cat.webm (480p) | [Three orange kittens following their mother](https://commons.wikimedia.org/wiki/File:Three_orange_kittens_following_their_mother.webm) | Jeromi Mikhael | CC0     |
+| ../media/horse-in-motion.gif | [The Horse in Motion, animated](https://commons.wikimedia.org/wiki/File:Muybridge_race_horse_animated.gif) | Eadweard Muybridge (photos, 1878) | Public domain |

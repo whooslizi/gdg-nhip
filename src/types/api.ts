@@ -130,3 +130,13 @@ export interface Booking {
   cancelCode?: string;
   refundMinor?: number;
 }
+
+export interface QueueStatus {
+  result: 'waiting' | 'admitted' | 'not_in_queue';
+  ahead: number;
+  /** When the 10 minutes on the seat map end (server clock); null while waiting. */
+  expiresAt: string | null;
+  serverTime: string;
+  /** `expiresAt` moved onto this browser's clock, so a skewed clock can't stretch the time. */
+  localExpiresAt: string | null;
+}

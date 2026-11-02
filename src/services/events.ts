@@ -1,5 +1,13 @@
 import { api, API_URL, ApiError } from '@/lib/api-client';
-import type { Category, EventDetail, EventSummary, Page, SeatMap, SeatStatus } from '@/types/api';
+import type {
+  Category,
+  EventDetail,
+  EventSummary,
+  Page,
+  QueueStatus,
+  SeatMap,
+  SeatStatus,
+} from '@/types/api';
 
 export interface EventQuery {
   search?: string;
@@ -272,4 +280,67 @@ export async function getSeatMap(
     maxSeatsPerHold: 8,
     serverTime: new Date().toISOString(),
   } satisfies SeatMap;
+}
+
+const ROOM_MS = 10 * 60_000;
+
+function onLocalClock(status: Omit<QueueStatus, 'localExpiresAt'>): QueueStatus {
+  const left = status.expiresAt
+    ? Date.parse(status.expiresAt) - Date.parse(status.serverTime)
+    : null;
+  return {
+    ...status,
+    localExpiresAt: left === null ? null : new Date(Date.now() + left).toISOString(),
+  };
+}
+
+// Frontend-only mode has a single visitor, so they are always first in line.
+const mockAdmissions = new Map<string, number>();
+function mockQueue(sessionId: string, join: boolean): QueueStatus {
+  if (join) mockAdmissions.set(sessionId, Date.now());
+  const admittedAt = mockAdmissions.get(sessionId);
+  const serverTime = new Date().toISOString();
+  if (!admittedAt) return onLocalClock({ result: 'not_in_queue', ahead: 0, expiresAt: null, serverTime });
+  return onLocalClock({
+    result: 'admitted',
+    ahead: 0,
+    expiresAt: new Date(admittedAt + ROOM_MS).toISOString(),
+    serverTime,
+  });
+}
+
+const queueCall = (
+  eventId: string,
+  sessionId: string,
+  join: boolean,
+  turnstileToken?: string | null,
+) =>
+  API_URL
+    ? api<Omit<QueueStatus, 'localExpiresAt'>>(join ? '/queue/join' : '/queue/heartbeat', {
+        method: 'POST',
+        body: { eventId: Number(eventId), sessionId, turnstileToken: turnstileToken ?? undefined },
+      }).then(onLocalClock)
+    : Promise.resolve(mockQueue(sessionId, join));
+
+/** `sessionId` is one visit to the seat page: leaving or reloading means a new place in line. */
+export const joinQueue = (eventId: string, sessionId: string, turnstileToken: string | null) =>
+  queueCall(eventId, sessionId, true, turnstileToken);
+export const queueHeartbeat = (eventId: string, sessionId: string) =>
+  queueCall(eventId, sessionId, false);
+
+/** Human check at the gate to the seat map; holds are refused for a visit that skipped it. */
+export const passGate = (eventId: string, sessionId: string, turnstileToken: string | null) =>
+  API_URL
+    ? api<{ passed: true }>('/queue/gate', {
+        method: 'POST',
+        body: { eventId: Number(eventId), sessionId, turnstileToken: turnstileToken ?? undefined },
+      })
+    : Promise.resolve({ passed: true as const });
+
+/** Gives the place back right away instead of after 30 quiet seconds; survives page unload. */
+export function leaveQueue(sessionId: string) {
+  if (!API_URL) return void mockAdmissions.delete(sessionId);
+  api('/queue/leave', { method: 'POST', body: { sessionId }, keepalive: true }).catch(() => {
+    // The server drops the row after 30 s without heartbeats anyway.
+  });
 }

@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-export type TurnstileAction = 'hold' | 'lookup' | 'cancel';
+export type TurnstileAction = 'hold' | 'lookup' | 'cancel' | 'queue' | 'gate';
 export interface TurnstileHandle {
   reset(): void;
 }

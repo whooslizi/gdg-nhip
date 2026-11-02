@@ -56,6 +56,17 @@ export async function adminLogin(username: string, password: string) {
   });
 }
 
+/** The admin login lives in this tab's sessionStorage; the seat page reads it for admin mode. */
+export const ADMIN_TOKEN_KEY = 'nhip-admin-session';
+
+export function readAdminToken() {
+  try {
+    return sessionStorage.getItem(ADMIN_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export const getAdminSession = (token: string) =>
   api<{ username: string; expiresAt: number }>('/admin/session', { authToken: token });
 

@@ -1,16 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ChevronUp, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, ChevronUp, ShieldCheck, Timer, Wifi, WifiOff } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { BookingSummary, type SelectedSeat } from '@/components/seating/BookingSummary';
 import { SeatingMap } from '@/components/seating/SeatingMap';
 import { SeatLegend } from '@/components/seating/SeatLegend';
+import { WaitingRoom } from '@/components/seating/WaitingRoom';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/States';
 import { useSeatSocket } from '@/hooks/useSeatSocket';
-import { ApiError, isCaptchaError } from '@/lib/api-client';
-import { formatDateTime, formatMoney } from '@/lib/format';
+import { useWaitingRoom } from '@/hooks/useWaitingRoom';
+import { API_URL, ApiError, isCaptchaError } from '@/lib/api-client';
+import { formatCountdown, formatDateTime, formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
+import { getAdminSession, readAdminToken } from '@/services/admin';
 import { cancelHold, confirmHold, createHold, getHold } from '@/services/booking';
 import { getEvent, getSeatMap, listShowtimes } from '@/services/events';
 import type { Seat, SeatChangeMessage, SeatMap } from '@/types/api';
@@ -25,12 +28,35 @@ export function SeatSelectionPage() {
   const [holdId, setHoldId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [enteredFor, setEnteredFor] = useState<string | null>(null);
+
+  // An admin logged in to /admin in this tab skips the queue and the seat cap; the server checks
+  // the token again on the admin hold route.
+  const [adminToken] = useState(readAdminToken);
+  const adminSession = useQuery({
+    queryKey: ['admin-session', adminToken],
+    queryFn: () => getAdminSession(adminToken!),
+    enabled: !!API_URL && !!adminToken,
+    retry: false,
+  });
+  const isAdmin = adminSession.isSuccess;
+  const checkingAdmin = !!API_URL && !!adminToken && adminSession.isPending;
 
   const eventQuery = useQuery({
     queryKey: ['event', slug],
     queryFn: ({ signal }) => getEvent(slug, signal),
   });
   const eventId = eventQuery.data?.id;
+  // The hold API checks this visit passed the queue's gate and is inside its 10 minutes.
+  const room = useWaitingRoom(eventId);
+  const roomLeft = room.left;
+  const admission = room.status?.result === 'admitted' ? room.status.expiresAt : null;
+  const entered = !!admission && enteredFor === admission;
+  const enterRoom = () => {
+    setEnteredFor(admission);
+    setSelected(new Set());
+    setMessage(null);
+  };
   const showtimesQuery = useQuery({
     queryKey: ['showtimes', eventId],
     queryFn: ({ signal }) => listShowtimes(eventId!, eventQuery.data?.startAt ?? null, signal),
@@ -112,6 +138,8 @@ export function SeatSelectionPage() {
         selectedSeats.map((s) => s.id),
         map,
         turnstileToken,
+        isAdmin ? adminToken : null,
+        room.sessionId,
       ),
     onSuccess: (newHold) => {
       queryClient.setQueryData(['hold', newHold.id], newHold);
@@ -134,6 +162,8 @@ export function SeatSelectionPage() {
         setMessage(t('seats.notOpen'));
       } else if (isCaptchaError(error)) {
         setMessage(t('captcha.failed'));
+      } else if (error.code === 'QUEUE_REQUIRED') {
+        setMessage(t('seats.queueRequired'));
       } else {
         setMessage(error.message);
       }
@@ -195,14 +225,14 @@ export function SeatSelectionPage() {
       setSelected((prev) => {
         const next = new Set(prev);
         if (next.has(seat.id)) next.delete(seat.id);
-        else if (map && next.size >= map.maxSeatsPerHold) {
+        else if (map && !isAdmin && next.size >= map.maxSeatsPerHold) {
           setMessage(t('seats.max', { max: map.maxSeatsPerHold }));
           return prev;
         } else next.add(seat.id);
         return next;
       });
     },
-    [map, t],
+    [map, isAdmin, t],
   );
 
   if (eventQuery.isError || showtimesQuery.isError || mapQuery.isError) {
@@ -232,7 +262,25 @@ export function SeatSelectionPage() {
     );
   }
 
-  if (!map) {
+  const waitingRoom = (timedOut: boolean) => (
+    <WaitingRoom
+      slug={slug}
+      title={eventQuery.data?.title}
+      status={room.status}
+      joining={room.joining}
+      joinError={room.joinError}
+      timedOut={timedOut}
+      onJoin={room.join}
+      gatePassed={room.gatePassed}
+      gating={room.gating}
+      gateError={room.gateError}
+      onPassGate={room.passGate}
+      onEnter={enterRoom}
+    />
+  );
+  if (!isAdmin && !checkingAdmin && !entered && eventId) return waitingRoom(roomLeft === 0);
+
+  if (!map || checkingAdmin) {
     return (
       <div className="grid gap-6 px-4 py-10 sm:px-10 lg:grid-cols-[1fr_360px]">
         <Skeleton className="h-[480px]" />
@@ -243,6 +291,10 @@ export function SeatSelectionPage() {
 
   if (hold?.status === 'CONFIRMED' && hold.bookingId)
     return <Navigate to={`/booking/${hold.bookingId}`} replace />;
+
+  // Time's up, but never in the middle of reserving or paying: a held seat keeps its own timer.
+  if (roomLeft === 0 && !holdActive && !reserve.isPending && !confirm.isPending)
+    return waitingRoom(true);
 
   const bookable = map.bookingState === 'OPEN' || map.bookingState === 'REGISTER';
   const expiredMessage = hold?.status === 'EXPIRED' && !holdActive ? t('seats.expired') : null;
@@ -297,6 +349,12 @@ export function SeatSelectionPage() {
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-bold">{t('seats.title')}</h1>
+          {isAdmin && (
+            <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-wine-700">
+              <ShieldCheck className="size-4" aria-hidden />
+              {t('seats.adminMode')}
+            </p>
+          )}
           {map.venue && <p className="mt-1 text-sm text-ink-muted">{map.venue.name}</p>}
         </div>
         <label className="grid min-w-56 gap-1.5 text-sm font-medium">
@@ -319,6 +377,12 @@ export function SeatSelectionPage() {
             ))}
           </select>
         </label>
+        {roomLeft !== null && !holdActive && (
+          <p className="flex items-center gap-1.5 text-xs text-ink-muted" role="timer">
+            <Timer className="size-4" aria-hidden />
+            {t('room.timeLeft', { time: formatCountdown(roomLeft) })}
+          </p>
+        )}
         {live !== null && (
           <p
             className={`flex items-center gap-1.5 text-xs ${live ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-300'}`}

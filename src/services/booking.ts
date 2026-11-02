@@ -37,6 +37,10 @@ export async function createHold(
   seatIds: string[],
   seatMap?: SeatMap,
   turnstileToken?: string | null,
+  /** An admin session token: the hold goes through the admin route, which has no seat cap. */
+  adminToken?: string | null,
+  /** This visit's waiting-room session; the public hold API checks it passed the gate. */
+  queueSessionId?: string,
 ) {
   if (!API_URL) return api<Hold>(`/events/${eventId}/holds`, { method: 'POST', body: { seatIds } });
   if (!seatMap?.showtimeId) throw new ApiError(400, 'SHOWTIME_REQUIRED', 'No showtime selected');
@@ -46,12 +50,14 @@ export async function createHold(
     showtimeId: number;
     seatIds: number[];
     expiresAt: string;
-  }>('/holds', {
+  }>(adminToken ? '/admin/holds' : '/holds', {
     method: 'POST',
+    authToken: adminToken ?? undefined,
     body: {
       showtimeId: Number(seatMap.showtimeId),
       seatIds: seatIds.map(Number),
       turnstileToken: turnstileToken ?? undefined,
+      queueSessionId: adminToken ? undefined : queueSessionId,
     },
   });
   const seats = new Map(

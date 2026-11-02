@@ -21,7 +21,13 @@ export const isCaptchaError = (error: unknown) =>
 
 export async function api<T>(
   path: string,
-  init: { method?: string; body?: unknown; signal?: AbortSignal; authToken?: string } = {},
+  init: {
+    method?: string;
+    body?: unknown;
+    signal?: AbortSignal;
+    authToken?: string;
+    keepalive?: boolean;
+  } = {},
 ) {
   if (!API_URL) return mockApi<T>(path, init);
   let res: Response;
@@ -30,6 +36,7 @@ export async function api<T>(
       method: init.method ?? 'GET',
       credentials: 'omit',
       signal: init.signal,
+      keepalive: init.keepalive,
       // X-Requested-With is required by the server's CSRF check.
       headers: {
         'X-Requested-With': 'fetch',

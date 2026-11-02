@@ -10,7 +10,9 @@ export function useCountdown(expiresAt: string | null, serverTime: string | null
 
   useEffect(() => {
     if (!expiresAt) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const tick = () => setNow(Date.now());
+    tick(); // a countdown that starts after mount must not count from the mount time
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [expiresAt]);
 
