@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, CalendarPlus, Check, LogOut, Pencil, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ApiError, API_URL } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/format';
@@ -62,6 +62,10 @@ const toLocalInput = (value: string) => {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
 const toIso = (value: string) => new Date(value).toISOString();
+// The camera scanner is heavy; only load it when the Check-in tab is opened.
+const CheckInPanel = lazy(() =>
+  import('@/components/admin/CheckInPanel').then((m) => ({ default: m.CheckInPanel })),
+);
 
 function readStoredToken() {
   try {
@@ -85,7 +89,7 @@ export function AdminDashboardPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'events' | 'showtimes' | 'facilities' | 'tickets'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'showtimes' | 'facilities' | 'tickets' | 'checkin'>('events');
 
   const session = useQuery({
     queryKey: ['admin-session', token],
@@ -271,6 +275,14 @@ export function AdminDashboardPage() {
         >
           Bán vé
         </button>
+        <button
+          type="button"
+          aria-pressed={activeTab === 'checkin'}
+          onClick={() => setActiveTab('checkin')}
+          className={`border-b-2 px-1 py-3 text-sm font-semibold ${activeTab === 'checkin' ? 'border-wine-700 text-wine-700' : 'border-transparent text-ink-muted'}`}
+        >
+          Check-in
+        </button>
       </nav>
 
       {events.isPending ? (
@@ -283,6 +295,10 @@ export function AdminDashboardPage() {
         <ShowtimesPanel events={events.data} token={token} onError={handleAdminError} />
       ) : activeTab === 'tickets' ? (
         <BuyTicketsPanel events={events.data} />
+      ) : activeTab === 'checkin' ? (
+        <Suspense fallback={<p className="py-12 text-sm text-ink-muted">Đang tải máy quét…</p>}>
+          <CheckInPanel events={events.data} token={token} onError={handleAdminError} />
+        </Suspense>
       ) : (
         <FacilitiesPanel token={token} onError={handleAdminError} />
       )}

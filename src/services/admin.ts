@@ -146,3 +146,36 @@ export const updateAdminShowtime = (
   body: Record<string, unknown>,
 ) =>
   api<AdminShowtime>(`/admin/showtimes/${showtimeId}`, { method: 'PATCH', body, authToken: token });
+export type CheckInOutcome =
+  | 'ok'
+  | 'already_checked_in'
+  | 'wrong_showtime'
+  | 'not_confirmed'
+  | 'revoked'
+  | 'invalid'
+  | 'not_found';
+
+/** What the door scanner gets back. Ticket details are missing for `invalid` / `not_found`. */
+export interface CheckInResult {
+  result: CheckInOutcome;
+  bookingCode?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  status?: string;
+  price?: number;
+  eventName?: string;
+  showtimeId?: number;
+  startAt?: string;
+  purchasedAt?: string | null;
+  seats?: { label: string; type: string }[] | null;
+  checkedInAt?: string | null;
+  checkedInBy?: string | null;
+}
+
+export const checkIn = (token: string, showtimeId: number, authToken: string) =>
+  api<CheckInResult>('/admin/checkin', {
+    method: 'POST',
+    body: { token: token.trim(), showtimeId },
+    authToken,
+  });

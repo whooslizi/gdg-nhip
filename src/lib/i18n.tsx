@@ -102,6 +102,11 @@ const vi = {
   'seats.live': 'Cập nhật trực tiếp',
   'seats.offline': 'Đang kết nối lại…',
   'booking.confirmed': 'Đặt vé thành công',
+  'ticket.title': 'Vé vào cửa',
+  'ticket.alt': 'Mã QR vé vào cửa cho đặt chỗ {code}',
+  'ticket.save': 'Lưu ảnh vé',
+  'ticket.hint':
+    'Lưu ảnh này và đưa mã QR ở cửa: đây là cách duy nhất để vào sự kiện. Chỉ lần quét đầu tiên được chấp nhận, nên đừng chia sẻ cho người khác.',
   'calendar.download': 'Thêm vào lịch (.ics)',
   'calendar.google': 'Google Calendar',
   'calendar.hint': 'Trên iPhone, tệp .ics sẽ mở trong ứng dụng Lịch; trên Android, hãy dùng nút Google Calendar.',
@@ -260,6 +265,11 @@ const en: Record<Key, string> = {
   'seats.live': 'Live availability',
   'seats.offline': 'Reconnecting…',
   'booking.confirmed': 'Booking confirmed',
+  'ticket.title': 'Your entry ticket',
+  'ticket.alt': 'Entry ticket QR code for booking {code}',
+  'ticket.save': 'Save ticket image',
+  'ticket.hint':
+    'Save this image and show the QR at the door: it is the only way into the event. Only the first scan is accepted, so don’t share it.',
   'calendar.download': 'Add to calendar (.ics)',
   'calendar.google': 'Google Calendar',
   'calendar.hint': 'On iPhone, the .ics file opens in Calendar; on Android, use the Google Calendar button.',

@@ -1,5 +1,19 @@
 
 const supabase = require("../config/supabase");
+const { createTicketTokenService } = require("./ticket-token.service");
+
+const ticketTokens = createTicketTokenService();
+
+// The door QR: only for a confirmed booking, signed on the server, null if no key is set.
+// Codes from the first booking-code migration can be malformed; those get no QR rather than an error.
+function ticketTokenFor(booking, showtimeId) {
+  if (booking.status !== "confirmed" || !booking.bookingcode || !showtimeId) return null;
+  try {
+    return ticketTokens.sign({ code: booking.bookingcode, showtimeId, version: booking.qrversion });
+  } catch {
+    return null;
+  }
+}
 
 async function processMockPayment({
   holdToken,
@@ -164,7 +178,7 @@ async function findBookingRecord(bookingReference) {
   const reference = String(bookingReference).trim();
   const { data: codedBooking, error: codeError } = await supabase
     .from("bookings")
-    .select("bookingid, bookingcode, username, userphone, useremail, price, status")
+    .select("bookingid, bookingcode, username, userphone, useremail, price, status, qrversion")
     .eq("bookingcode", reference.toUpperCase())
     .maybeSingle();
 
@@ -177,7 +191,7 @@ async function findBookingRecord(bookingReference) {
 
   const { data, error } = await supabase
     .from("bookings")
-    .select("bookingid, bookingcode, username, userphone, useremail, price, status")
+    .select("bookingid, bookingcode, username, userphone, useremail, price, status, qrversion")
     .eq("bookingid", legacyId)
     .maybeSingle();
 
@@ -215,11 +229,12 @@ async function getBookingById(bookingReference, userEmail) {
   if (bookedSeatsError) throw bookedSeatsError;
 
   let event = null;
+  let showtimeId = null;
   let startAt = null;
   let endAt = null;
   let venue = null;
   if (bookedSeats?.length) {
-    const showtimeId = bookedSeats[0].showtimeid;
+    showtimeId = bookedSeats[0].showtimeid;
     if (bookedSeats.some((seat) => seat.showtimeid !== showtimeId)) {
       throw new Error("Booking contains seats from multiple showtimes");
     }
@@ -295,6 +310,7 @@ async function getBookingById(bookingReference, userEmail) {
       unitPriceMinor: seatPrice(seat.seattype),
     })),
     totalMinor: Number(booking.price),
+    ticketToken: ticketTokenFor(booking, showtimeId),
     currency: "VND",
     confirmedAt: payment?.createdat ?? null,
     ...(booking.status === "cancelled" && { refundMinor: Number(booking.price) }),

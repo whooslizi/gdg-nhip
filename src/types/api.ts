@@ -128,6 +128,8 @@ export interface Booking {
   confirmedAt: string | null;
   /** Only returned to the device that booked; never by email + code lookup. */
   cancelCode?: string;
+  /** Server-signed door ticket, only on confirmed bookings in live mode. Drawn as a QR, never built on the client. */
+  ticketToken?: string | null;
   refundMinor?: number;
 }
 

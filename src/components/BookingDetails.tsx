@@ -1,4 +1,5 @@
 import { CheckCircle2, KeyRound, ShieldAlert, XCircle } from 'lucide-react';
+import { TicketQr } from '@/components/TicketQr';
 import { API_URL } from '@/lib/api-client';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
@@ -59,6 +60,7 @@ export function BookingDetails({ booking: b }: { booking: Booking }) {
           </div>
         )}
       </dl>
+      {b.ticketToken && !cancelled && <TicketQr token={b.ticketToken} code={b.reference} />}
       <ul className="mx-6 mt-6 divide-y divide-line border-t border-line">
         {b.items.map((i) => (
           <li key={i.seatLabel} className="flex justify-between py-2 text-sm">
