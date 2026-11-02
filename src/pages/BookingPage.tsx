@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Navigate, useParams } from 'react-router';
+import { AddToCalendar } from '@/components/AddToCalendar';
 import { BookingDetails } from '@/components/BookingDetails';
 import { CancelBooking } from '@/components/CancelBooking';
 import { buttonClass } from '@/components/ui/Button';
@@ -28,6 +29,7 @@ export function BookingPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <BookingDetails booking={query.data} />
+      <AddToCalendar booking={query.data} />
       <CancelBooking booking={query.data} />
       <Link
         to={`/events/${query.data.event.slug}`}

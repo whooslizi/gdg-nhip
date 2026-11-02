@@ -15,6 +15,7 @@ const booking: Booking = {
     title: 'Bloom',
     posterUrl: null,
     startAt: '2026-11-01T10:00:00Z',
+    endAt: '2026-11-01T12:00:00Z',
     venue: 'Cinema · Room 1',
     city: null,
   },

@@ -6,3 +6,6 @@ coverage
 .DS_Store
 LICENSE
 fix-sec/
+claude.md
+booking-*.md
+booking-test-logs/

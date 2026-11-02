@@ -112,6 +112,7 @@ export interface Booking {
     title: string;
     posterUrl: string | null;
     startAt: string | null;
+    endAt: string | null;
     venue: string | null;
     city: string | null;
   };

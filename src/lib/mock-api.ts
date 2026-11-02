@@ -164,6 +164,8 @@ function toBooking(b: StoredBooking, store: Store, withCancelCode = false): Book
       title: e.title,
       posterUrl: e.posterUrl,
       startAt: e.startAt,
+      // Mock events have no end time; assume two hours.
+      endAt: e.startAt ? new Date(Date.parse(e.startAt) + 2 * 3600_000).toISOString() : null,
       venue: e.venue,
       city: e.city,
     },

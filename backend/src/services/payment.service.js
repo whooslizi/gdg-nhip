@@ -216,6 +216,7 @@ async function getBookingById(bookingReference, userEmail) {
 
   let event = null;
   let startAt = null;
+  let endAt = null;
   let venue = null;
   if (bookedSeats?.length) {
     const showtimeId = bookedSeats[0].showtimeid;
@@ -225,13 +226,14 @@ async function getBookingById(bookingReference, userEmail) {
 
     const { data: showtime, error: showtimeError } = await supabase
       .from("showtimes")
-      .select("eventid, roomid, startat")
+      .select("eventid, roomid, startat, endat")
       .eq("showtimeid", showtimeId)
       .maybeSingle();
     if (showtimeError) throw showtimeError;
 
     if (showtime) {
       startAt = showtime.startat;
+      endAt = showtime.endat;
       const [{ data: eventData, error: eventError }, { data: room, error: roomError }] =
         await Promise.all([
           supabase
@@ -254,6 +256,7 @@ async function getBookingById(bookingReference, userEmail) {
           title: eventData.eventname,
           posterUrl: eventData.poster,
           startAt,
+          endAt,
           venue: null,
           city: null,
         };
@@ -276,11 +279,12 @@ async function getBookingById(bookingReference, userEmail) {
     accessCode: "",
     email: booking.useremail,
     status: booking.status.toUpperCase(),
-    event: event ?? {
+    event: event ? { ...event, venue } : {
       slug: "",
       title: "Booking",
       posterUrl: null,
       startAt,
+      endAt,
       venue,
       city: null,
     },
