@@ -4,6 +4,8 @@ import { useCountdown } from '@/hooks/useCountdown';
 import { formatCountdown, formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
 import type { Hold } from '@/types/api';
+import { turnstileEnabled } from '@/lib/turnstile';
+import { Turnstile, type TurnstileHandle } from '../Turnstile';
 import { Button } from '../ui/Button';
 
 export interface SelectedSeat {
@@ -20,7 +22,7 @@ type Props =
       currency: string;
       canReserve: boolean;
       reserving: boolean;
-      onReserve: () => void;
+      onReserve: (turnstileToken: string | null) => void;
       pricesConfigured?: boolean;
       message: string | null;
     }
@@ -113,6 +115,8 @@ export function BookingSummary(props: Props) {
   const nameId = useId();
   const phoneId = useId();
   const emailId = useId();
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captcha = useRef<TurnstileHandle>(null);
   const alert = props.message && (
     <p role="alert" className="text-sm text-wine-700">
       {props.message}
@@ -226,11 +230,20 @@ export function BookingSummary(props: Props) {
         </>
       )}
       {alert}
+      <Turnstile action="hold" onToken={setCaptchaToken} ref={captcha} />
       <Button
         size="lg"
         className="w-full"
-        onClick={props.onReserve}
-        disabled={!props.canReserve || props.reserving || props.seats.length === 0}
+        onClick={() => {
+          props.onReserve(captchaToken);
+          captcha.current?.reset();
+        }}
+        disabled={
+          !props.canReserve ||
+          props.reserving ||
+          props.seats.length === 0 ||
+          (turnstileEnabled() && !captchaToken)
+        }
       >
         {props.reserving ? t('seats.reserving') : t('seats.reserve')}
       </Button>

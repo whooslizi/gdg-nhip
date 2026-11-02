@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { BookingDetails } from '@/components/BookingDetails';
 import { CancelBooking } from '@/components/CancelBooking';
+import { Turnstile, type TurnstileHandle } from '@/components/Turnstile';
 import { Button } from '@/components/ui/Button';
-import { API_URL, ApiError } from '@/lib/api-client';
+import { API_URL, ApiError, isCaptchaError } from '@/lib/api-client';
 import { formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
+import { turnstileEnabled } from '@/lib/turnstile';
 import { listMyBookings, lookupBooking } from '@/services/booking';
 import type { Booking } from '@/types/api';
 
@@ -20,8 +22,10 @@ export function MyBookingsPage() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState(() => searchParams.get('bookingId') ?? '');
   const [cancelled, setCancelled] = useState<Booking | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captcha = useRef<TurnstileHandle>(null);
   const lookup = useMutation({
-    mutationFn: () => lookupBooking(email.trim(), code.trim()),
+    mutationFn: (token: string | null) => lookupBooking(email.trim(), code.trim(), token),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] }),
   });
   const mine = useQuery({ queryKey: ['bookings'], queryFn: listMyBookings });
@@ -30,7 +34,8 @@ export function MyBookingsPage() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     setCancelled(null);
-    lookup.mutate();
+    lookup.mutate(captchaToken);
+    captcha.current?.reset();
   };
 
   return (
@@ -66,15 +71,24 @@ export function MyBookingsPage() {
             className={`${input} font-mono tracking-widest`}
           />
         </label>
-        <Button type="submit" size="lg" disabled={lookup.isPending}>
+        <Button
+          type="submit"
+          size="lg"
+          disabled={lookup.isPending || (turnstileEnabled() && !captchaToken)}
+        >
           {t('lookup.submit')}
         </Button>
+        <div className="sm:col-span-3">
+          <Turnstile action="lookup" onToken={setCaptchaToken} ref={captcha} />
+        </div>
       </form>
       {lookup.isError && (
         <p role="alert" className="mt-4 text-sm text-wine-700">
           {lookup.error instanceof ApiError && lookup.error.status === 404
             ? t('lookup.notFound')
-            : lookup.error.message}
+            : isCaptchaError(lookup.error)
+              ? t('captcha.failed')
+              : lookup.error.message}
         </p>
       )}
       {booking && (

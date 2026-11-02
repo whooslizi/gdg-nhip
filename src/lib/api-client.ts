@@ -15,6 +15,10 @@ export class ApiError extends Error {
   }
 }
 
+export const isCaptchaError = (error: unknown) =>
+  error instanceof ApiError &&
+  (error.code === 'CAPTCHA_REQUIRED' || error.code === 'CAPTCHA_FAILED');
+
 export async function api<T>(
   path: string,
   init: { method?: string; body?: unknown; signal?: AbortSignal; authToken?: string } = {},

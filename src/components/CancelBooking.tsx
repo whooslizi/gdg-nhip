@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
+import { Turnstile, type TurnstileHandle } from '@/components/Turnstile';
 import { Button } from '@/components/ui/Button';
-import { API_URL, ApiError } from '@/lib/api-client';
+import { API_URL, ApiError, isCaptchaError } from '@/lib/api-client';
 import { formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
+import { turnstileEnabled } from '@/lib/turnstile';
 import { cancelBooking } from '@/services/booking';
 import type { Booking } from '@/types/api';
 
@@ -20,9 +22,12 @@ export function CancelBooking({
 }) {
   const { t, locale } = useI18n();
   const [cancelCode, setCancelCode] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captcha = useRef<TurnstileHandle>(null);
   const queryClient = useQueryClient();
   const cancel = useMutation({
-    mutationFn: () => cancelBooking(booking.id, API_URL ? booking.email : cancelCode.trim()),
+    mutationFn: (token: string | null) =>
+      cancelBooking(booking.id, API_URL ? booking.email : cancelCode.trim(), token),
     onSuccess: (b) => {
       onCancelled?.(b);
       return queryClient.invalidateQueries();
@@ -30,7 +35,8 @@ export function CancelBooking({
   });
   const submitCancel = (e: FormEvent) => {
     e.preventDefault();
-    cancel.mutate();
+    cancel.mutate(captchaToken);
+    captcha.current?.reset();
   };
 
   return (
@@ -55,16 +61,25 @@ export function CancelBooking({
               />
             </label>
           )}
+          <div className="mt-4">
+            <Turnstile action="cancel" onToken={setCaptchaToken} ref={captcha} />
+          </div>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-            <Button type="submit" size="lg" disabled={cancel.isPending}>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={cancel.isPending || (turnstileEnabled() && !captchaToken)}
+            >
               {t(cancel.isPending ? 'cancel.submitting' : 'cancel.submit')}
             </Button>
           </div>
           {cancel.isError && (
             <p role="alert" className="mt-3 text-sm text-wine-700">
-              {cancel.error instanceof ApiError && cancel.error.status === 403
-                ? t('cancel.wrongCode')
-                : cancel.error.message}
+              {isCaptchaError(cancel.error)
+                ? t('captcha.failed')
+                : cancel.error instanceof ApiError && cancel.error.status === 403
+                  ? t('cancel.wrongCode')
+                  : cancel.error.message}
             </p>
           )}
         </form>

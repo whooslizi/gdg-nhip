@@ -8,7 +8,7 @@ import { SeatLegend } from '@/components/seating/SeatLegend';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/States';
 import { useSeatSocket } from '@/hooks/useSeatSocket';
-import { ApiError } from '@/lib/api-client';
+import { ApiError, isCaptchaError } from '@/lib/api-client';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
 import { cancelHold, confirmHold, createHold, getHold } from '@/services/booking';
@@ -106,11 +106,12 @@ export function SeatSelectionPage() {
   const refreshMap = () => queryClient.invalidateQueries({ queryKey: mapKey });
 
   const reserve = useMutation({
-    mutationFn: () =>
+    mutationFn: (turnstileToken: string | null) =>
       createHold(
         eventId!,
         selectedSeats.map((s) => s.id),
         map,
+        turnstileToken,
       ),
     onSuccess: (newHold) => {
       queryClient.setQueryData(['hold', newHold.id], newHold);
@@ -131,6 +132,8 @@ export function SeatSelectionPage() {
         setMessage(t('seats.holdExists'));
       } else if (error.code === 'BOOKING_NOT_OPEN') {
         setMessage(t('seats.notOpen'));
+      } else if (isCaptchaError(error)) {
+        setMessage(t('captcha.failed'));
       } else {
         setMessage(error.message);
       }
@@ -266,7 +269,7 @@ export function SeatSelectionPage() {
       pricesConfigured={map.priceConfigured !== false}
       canReserve={bookable}
       reserving={reserve.isPending}
-      onReserve={() => reserve.mutate()}
+      onReserve={(token) => reserve.mutate(token)}
       message={
         shownMessage ??
         (map.priceConfigured === false

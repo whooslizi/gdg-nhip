@@ -32,7 +32,12 @@ function rememberDeviceBooking(id: string, email: string) {
   }
 }
 
-export async function createHold(eventId: string, seatIds: string[], seatMap?: SeatMap) {
+export async function createHold(
+  eventId: string,
+  seatIds: string[],
+  seatMap?: SeatMap,
+  turnstileToken?: string | null,
+) {
   if (!API_URL) return api<Hold>(`/events/${eventId}/holds`, { method: 'POST', body: { seatIds } });
   if (!seatMap?.showtimeId) throw new ApiError(400, 'SHOWTIME_REQUIRED', 'No showtime selected');
 
@@ -46,6 +51,7 @@ export async function createHold(eventId: string, seatIds: string[], seatMap?: S
     body: {
       showtimeId: Number(seatMap.showtimeId),
       seatIds: seatIds.map(Number),
+      turnstileToken: turnstileToken ?? undefined,
     },
   });
   const seats = new Map(
@@ -171,7 +177,11 @@ export async function listMyBookings() {
   return available;
 }
 
-export async function lookupBooking(email: string, bookingId: string) {
+export async function lookupBooking(
+  email: string,
+  bookingId: string,
+  turnstileToken?: string | null,
+) {
   if (!API_URL) {
     return api<Booking>('/bookings/lookup', {
       method: 'POST',
@@ -180,14 +190,24 @@ export async function lookupBooking(email: string, bookingId: string) {
   }
   const booking = await api<Booking>('/bookings/lookup', {
     method: 'POST',
-    body: { email, bookingId: bookingId.trim().toUpperCase() },
+    body: {
+      email,
+      bookingId: bookingId.trim().toUpperCase(),
+      turnstileToken: turnstileToken ?? undefined,
+    },
   });
   rememberDeviceBooking(booking.id, booking.email);
   return booking;
 }
 
-export const cancelBooking = (bookingId: string, verification: string) =>
+export const cancelBooking = (
+  bookingId: string,
+  verification: string,
+  turnstileToken?: string | null,
+) =>
   api<Booking>(`/bookings/${bookingId}/cancel`, {
     method: 'POST',
-    body: API_URL ? { email: verification } : { cancelCode: verification },
+    body: API_URL
+      ? { email: verification, turnstileToken: turnstileToken ?? undefined }
+      : { cancelCode: verification },
   });

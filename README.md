@@ -23,6 +23,18 @@ Live mode uses the routes implemented under `backend/src/routes` for events, sho
 
 The backend does not currently provide booking lookup/listing or cancellation, and a hold cannot be resumed after reloading the page.
 
+## Bot check (Cloudflare Turnstile)
+
+Holding seats, booking lookup and cancellation require a Cloudflare Turnstile token in live mode.
+
+| Variable | Where | Value |
+|---|---|---|
+| `VITE_TURNSTILE_SITE_KEY` | frontend `.env.local` / Vercel | Turnstile sitekey (public) |
+| `TURNSTILE_SECRET_KEY` | `backend/.env` / Vercel | Turnstile secret, never prefixed with `VITE_` |
+| `TURNSTILE_HOSTNAMES` | `backend/.env` / Vercel | comma-separated hostnames the widget runs on, e.g. `gdg-nhip.vercel.app` |
+
+For local development use Cloudflare's test keys: sitekey `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA` (always passes). Never deploy a test secret. Without `TURNSTILE_SECRET_KEY` the backend skips the check in development and refuses these requests with 503 in production; with a real secret, production also needs `TURNSTILE_HOSTNAMES`. Frontend-only mode (no `VITE_API_BASE_URL`) never shows the widget.
+
 ## Admin dashboard
 
 Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` in `backend/.env` to enable `/admin`.
