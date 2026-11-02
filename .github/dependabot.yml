@@ -6,6 +6,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # typescript-eslint only supports TypeScript < 6.1; a bigger bump breaks npm install on Vercel.
+      # Lift this once typescript-eslint supports the newer version.
+      - dependency-name: "typescript"
+        versions: [">=6.1.0"]
   - package-ecosystem: "npm"
     directory: "/backend"
     schedule:
