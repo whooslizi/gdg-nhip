@@ -275,7 +275,8 @@ describe('SeatSelectionPage', () => {
         : undefined,
     );
     renderPage();
-    expect(await screen.findByRole('heading', { name: '3 people ahead of you' })).toBeInTheDocument();
+    expect(await screen.findByText('3')).toBeInTheDocument();
+    expect(screen.getByText('ahead of you in line')).toBeInTheDocument();
     expect(screen.getByText(/A seat is only yours once Reserve succeeds/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open now' })).toBeNull();
     const join = server.fetch.mock.calls.find(([url]) => String(url).endsWith('/queue/join'));

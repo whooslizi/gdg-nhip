@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Turnstile, type TurnstileHandle } from '@/components/Turnstile';
 import { Button, buttonClass } from '@/components/ui/Button';
-import { isCaptchaError } from '@/lib/api-client';
+import { ApiError, isCaptchaError } from '@/lib/api-client';
 import { useI18n } from '@/lib/i18n';
 import { turnstileEnabled } from '@/lib/turnstile';
 import type { QueueStatus } from '@/types/api';
@@ -99,15 +99,14 @@ export function WaitingRoom({
 
   const error = joinError ?? gateError;
 
-  const heading = timedOut
-    ? t('room.timedOut')
-    : admitted
-      ? t('room.yourTurn')
-      : !queued
-        ? t('room.joining')
-        : ahead === 1
-          ? t('room.aheadOne')
-          : t('room.ahead', { count: ahead });
+  const heading = timedOut ? t('room.timedOut') : admitted ? t('room.yourTurn') : t('room.joining');
+  const errorText = !error
+    ? null
+    : isCaptchaError(error)
+      ? t('captcha.failed')
+      : error instanceof ApiError && error.code === 'QUEUE_NOT_SET_UP'
+        ? t('room.notSetUp')
+        : error.message;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-10 lg:py-16">
@@ -115,12 +114,17 @@ export function WaitingRoom({
         {t('room.eyebrow')}
       </p>
       {title && <p className="mt-1 text-ink-muted">{title}</p>}
-      <h1
-        className="mt-4 font-display text-4xl font-bold tabular-nums sm:text-5xl"
-        aria-live="polite"
-      >
+      <h1 className="mt-4 font-display text-4xl font-bold sm:text-5xl" aria-live="polite">
         {heading}
       </h1>
+      {!admitted && !timedOut && (
+        <p className="mt-6 flex items-baseline gap-4" aria-live="polite">
+          <span className="font-display text-7xl font-bold text-wine-700 tabular-nums">
+            {status?.result === 'waiting' ? ahead : '–'}
+          </span>
+          <span className="text-ink-muted">{t('room.aheadLabel')}</span>
+        </p>
+      )}
       <p className="mt-3 text-ink-muted">
         {timedOut
           ? t('room.timedOutBody')
@@ -165,7 +169,7 @@ export function WaitingRoom({
 
       {error && (
         <p role="alert" className="mt-6 text-sm text-wine-700">
-          {isCaptchaError(error) ? t('captcha.failed') : error.message}
+          {errorText}
         </p>
       )}
       {(timedOut || joinError || !queued || atGate) && (

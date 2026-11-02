@@ -127,3 +127,13 @@ test("the gate passes an admitted tab and refuses one that isn't", async () => {
   assert.equal(early.payload.code, "NOT_ADMITTED");
   assert.equal((await run({ eventId: 3, sessionId: "x" })).statusCode, 400);
 });
+
+test("a missing waiting-room migration answers 503 QUEUE_NOT_SET_UP, not a bare 500", async () => {
+  for (const code of ["PGRST202", "PGRST205", "42P01", "42703"]) {
+    const res = await call(async () => {
+      throw { code, message: "missing" };
+    }, { eventId: 3, sessionId: SESSION }, true);
+    assert.equal(res.statusCode, 503);
+    assert.equal(res.payload.code, "QUEUE_NOT_SET_UP");
+  }
+});

@@ -3,7 +3,7 @@ const {
   cancelHold: cancelHoldService,
 } = require("../services/hold.service");
 const { mayHold: queueMayHold } = require("../services/waiting-room.service");
-const { UUID } = require("./waiting-room.controller");
+const { UUID, queueNotSetUp } = require("./waiting-room.controller");
 
 const MAX_SEATS_PER_HOLD = 8;
 
@@ -72,6 +72,7 @@ function holdHandler(maxSeats, { hold = holdSeats, mayHold = null } = {}) {
         data: result,
       });
     } catch (error) {
+      if (queueNotSetUp(res, error)) return res;
       console.error("Create hold failed:", error.message);
 
       const message = error.message || "";
