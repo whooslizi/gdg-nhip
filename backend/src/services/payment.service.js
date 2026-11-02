@@ -178,7 +178,7 @@ async function findBookingRecord(bookingReference) {
   const reference = String(bookingReference).trim();
   const { data: codedBooking, error: codeError } = await supabase
     .from("bookings")
-    .select("bookingid, bookingcode, username, userphone, useremail, price, status, qrversion")
+    .select("bookingid, bookingcode, username, userphone, useremail, price, status, qrversion, checkedinat, checkedinby")
     .eq("bookingcode", reference.toUpperCase())
     .maybeSingle();
 
@@ -191,7 +191,7 @@ async function findBookingRecord(bookingReference) {
 
   const { data, error } = await supabase
     .from("bookings")
-    .select("bookingid, bookingcode, username, userphone, useremail, price, status, qrversion")
+    .select("bookingid, bookingcode, username, userphone, useremail, price, status, qrversion, checkedinat, checkedinby")
     .eq("bookingid", legacyId)
     .maybeSingle();
 
@@ -313,6 +313,8 @@ async function getBookingById(bookingReference, userEmail) {
     ticketToken: ticketTokenFor(booking, showtimeId),
     currency: "VND",
     confirmedAt: payment?.createdat ?? null,
+    checkedInAt: booking.checkedinat ?? null,
+    checkedInBy: booking.checkedinby ?? null,
     ...(booking.status === "cancelled" && { refundMinor: Number(booking.price) }),
   };
 }

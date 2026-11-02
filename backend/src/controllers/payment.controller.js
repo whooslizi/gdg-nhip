@@ -1,6 +1,10 @@
 
 const paymentService = require("../services/payment.service");
 
+// Vietnamese mobile: 0 or +84, then 9 digits. Spaces, dots and dashes are dropped first.
+const PHONE = /^(0|\+84)\d{9}$/;
+const normalizePhone = (value) => value.replace(/[\s.-]/g, "");
+
 async function createMockPayment(req, res) {
   try {
     const {
@@ -18,7 +22,7 @@ async function createMockPayment(req, res) {
       typeof userName !== "string" ||
       !userName.trim() ||
       typeof userPhone !== "string" ||
-      !userPhone.trim() ||
+      !PHONE.test(normalizePhone(userPhone)) ||
       typeof userEmail !== "string" ||
       !userEmail.trim() ||
       !Number.isSafeInteger(price) ||
@@ -34,7 +38,7 @@ async function createMockPayment(req, res) {
     const data = await paymentService.processMockPayment({
       holdToken,
       userName: userName.trim(),
-      userPhone: userPhone.trim(),
+      userPhone: normalizePhone(userPhone),
       userEmail: userEmail.trim(),
       price,
       result,

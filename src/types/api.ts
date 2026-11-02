@@ -130,6 +130,9 @@ export interface Booking {
   cancelCode?: string;
   /** Server-signed door ticket, only on confirmed bookings in live mode. Drawn as a QR, never built on the client. */
   ticketToken?: string | null;
+  /** Set once staff scan the ticket at the door. */
+  checkedInAt?: string | null;
+  checkedInBy?: string | null;
   refundMinor?: number;
 }
 

@@ -33,7 +33,7 @@ export function BookingPage() {
       <CancelBooking booking={query.data} />
       <Link
         to={`/events/${query.data.event.slug}`}
-        className={buttonClass('secondary', 'md', 'mt-6')}
+        className={buttonClass('secondary', 'md', 'mt-8')}
       >
         {t('booking.backToEvent')}
       </Link>

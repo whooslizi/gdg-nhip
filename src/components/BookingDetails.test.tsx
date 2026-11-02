@@ -44,10 +44,24 @@ describe('BookingDetails ticket QR', () => {
 
   it('shows no QR without a token or once cancelled', () => {
     const { unmount } = renderRoute(<BookingDetails booking={{ ...booking, ticketToken: null }} />);
-    expect(screen.queryByText('Your entry ticket')).toBeNull();
+    expect(screen.queryByText('Your ticket')).toBeNull();
     unmount();
     renderRoute(<BookingDetails booking={{ ...booking, status: 'CANCELLED' }} />);
-    expect(screen.queryByText('Your entry ticket')).toBeNull();
+    expect(screen.queryByText('Your ticket')).toBeNull();
     expect(toDataURL).not.toHaveBeenCalled();
+  });
+
+  it('says when and by whom the ticket was scanned at the door', () => {
+    renderRoute(
+      <BookingDetails
+        booking={{ ...booking, checkedInAt: '2026-11-10T12:02:00Z', checkedInBy: 'staff1' }}
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(/Checked in\s*Scanned by staff1 at/);
+  });
+
+  it('shows no check-in note before the ticket is scanned', () => {
+    renderRoute(<BookingDetails booking={booking} />);
+    expect(screen.queryByText('Checked in')).toBeNull();
   });
 });

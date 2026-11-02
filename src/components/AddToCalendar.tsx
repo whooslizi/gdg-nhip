@@ -26,7 +26,7 @@ export function AddToCalendar({ booking }: { booking: Booking }) {
   };
 
   return (
-    <div className="mt-6">
+    <div className="mt-8">
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
@@ -46,7 +46,7 @@ export function AddToCalendar({ booking }: { booking: Booking }) {
           {t('calendar.google')}
         </a>
       </div>
-      <p className="mt-2 text-xs text-ink-muted">{t('calendar.hint')}</p>
+      <p className="mt-3 text-xs text-ink-muted">{t('calendar.hint')}</p>
     </div>
   );
 }

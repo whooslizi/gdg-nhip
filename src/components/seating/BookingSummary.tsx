@@ -60,7 +60,9 @@ function Lines({
               <span className="text-ink-muted">{i.sub}</span>
             </span>
             <span className="tabular-nums">
-              {pricesConfigured ? formatMoney(i.price, currency, locale) : t('seats.priceUnavailable')}
+              {pricesConfigured
+                ? formatMoney(i.price, currency, locale)
+                : t('seats.priceUnavailable')}
             </span>
           </li>
         ))}
@@ -168,12 +170,19 @@ export function BookingSummary(props: Props) {
               <input
                 id={phoneId}
                 type="tel"
+                inputMode="tel"
                 required
                 autoComplete="tel"
+                // Same rule as the server: 0 or +84, then 9 digits.
+                pattern="(\+84|0)[0-9]{9}"
+                maxLength={12}
+                title={t('seats.phoneHint')}
+                placeholder="0912345678"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ''))}
                 className="mt-1 h-11 w-full rounded-lg border border-line px-3 focus:border-wine-600 focus:outline-none"
               />
+              <p className="mt-1 text-xs text-ink-muted">{t('seats.phoneHint')}</p>
             </div>
           </>
         )}
@@ -200,7 +209,14 @@ export function BookingSummary(props: Props) {
           className="w-full"
           disabled={busy || props.canConfirm === false}
         >
-          {props.confirming ? t('seats.paying') : <><CreditCard className="size-4" aria-hidden />{t('seats.pay')}</>}
+          {props.confirming ? (
+            t('seats.paying')
+          ) : (
+            <>
+              <CreditCard className="size-4" aria-hidden />
+              {t('seats.pay')}
+            </>
+          )}
         </Button>
         <Button variant="secondary" className="w-full" onClick={props.onRelease} disabled={busy}>
           {t('seats.release')}

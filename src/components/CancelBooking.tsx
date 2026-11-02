@@ -41,8 +41,8 @@ export function CancelBooking({
 
   return (
     <>
-      {booking.status !== 'CANCELLED' && !cancel.data && (
-        <form onSubmit={submitCancel} className="mt-6 rounded-xl border border-line p-6">
+      {booking.status !== 'CANCELLED' && !booking.checkedInAt && !cancel.data && (
+        <form onSubmit={submitCancel} className="mt-10 rounded-xl border border-line p-6">
           <h2 className="text-lg font-bold">{t('cancel.title')}</h2>
           <p className="mt-1 text-sm text-ink-muted">
             {t(API_URL ? 'cancel.liveBody' : 'cancel.body')}
@@ -85,7 +85,7 @@ export function CancelBooking({
         </form>
       )}
       {cancel.data && (
-        <section role="status" className="mt-6 rounded-xl border border-line p-6">
+        <section role="status" className="mt-10 rounded-xl border border-line p-6">
           <h2 className="text-lg font-bold">{t('cancel.done')}</h2>
           <p className="mt-1 text-sm">
             {cancel.data.refundMinor

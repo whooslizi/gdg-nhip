@@ -32,7 +32,7 @@ export function TicketQr({ token, code }: { token: string; code: string }) {
   }, [token]);
 
   return (
-    <section className="mx-6 mt-6 rounded-lg border-2 border-dashed border-wine-600 p-5">
+    <section className="mx-6 mt-8 rounded-lg border-2 border-dashed border-wine-600 p-5">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-wine-700">
         <QrCode className="size-4" aria-hidden /> {t('ticket.title')}
       </h2>
