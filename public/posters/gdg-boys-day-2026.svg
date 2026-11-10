@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#0f2747"/>
+  <g opacity="0.9">
+    <rect x="0" y="0" width="300" height="800" fill="#4285f4"/>
+  </g>
+  <g fill="none" stroke="#fff" stroke-width="3" opacity="0.25">
+    <path d="M300 120 H1140"/>
+    <path d="M300 680 H1140"/>
+  </g>
+  <g font-family="Helvetica, Arial, sans-serif">
+    <text x="150" y="430" fill="#fff" font-size="150" font-weight="900" text-anchor="middle">19</text>
+    <text x="150" y="500" fill="#fff" font-size="40" font-weight="700" text-anchor="middle" letter-spacing="8">.11</text>
+    <text x="360" y="230" fill="#8ab4f8" font-size="34" font-weight="700" letter-spacing="10">GDG-HUST</text>
+    <text x="360" y="380" fill="#fff" font-size="120" font-weight="900">BOYS' DAY</text>
+    <text x="360" y="470" fill="#fbbc04" font-size="64" font-weight="800" letter-spacing="4">FOR THE B0YS</text>
+    <text x="360" y="620" fill="#fff" font-size="30" font-weight="400" letter-spacing="6">2026 · ĐẠI HỌC BÁCH KHOA HÀ NỘI</text>
+  </g>
+</svg>

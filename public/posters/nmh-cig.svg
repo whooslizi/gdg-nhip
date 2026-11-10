@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e3122b"/>
+      <stop offset="0.6" stop-color="#7d0718"/>
+      <stop offset="1" stop-color="#1a0206"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <g fill="none" stroke="#fff" stroke-opacity="0.18" stroke-width="2">
+    <circle cx="880" cy="300" r="160"/>
+    <circle cx="880" cy="300" r="240"/>
+    <circle cx="880" cy="300" r="320"/>
+  </g>
+  <g font-family="Helvetica, Arial, sans-serif" fill="#fff">
+    <text x="90" y="250" font-size="40" font-weight="700" letter-spacing="14">NMH FAN MEETING</text>
+    <text x="80" y="520" font-size="300" font-weight="900" letter-spacing="-6">CIG</text>
+    <text x="90" y="600" font-size="36" font-weight="300" letter-spacing="12">IN HANOI</text>
+    <text x="90" y="700" font-size="28" font-weight="700" letter-spacing="8" fill="#ffd0d6">09.01.2027 · NHÀ THI ĐẤU HÀ NỘI</text>
+  </g>
+</svg>

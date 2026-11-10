@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="38%" r="70%">
+      <stop offset="0" stop-color="#ff4f9a"/>
+      <stop offset="0.45" stop-color="#7a0f4a"/>
+      <stop offset="1" stop-color="#12030c"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#glow)"/>
+  <g fill="url(#beam)">
+    <polygon points="600,0 380,800 470,800"/>
+    <polygon points="600,0 730,800 820,800"/>
+    <polygon points="600,0 120,800 220,800"/>
+    <polygon points="600,0 980,800 1080,800"/>
+  </g>
+  <g font-family="Helvetica, Arial, sans-serif" fill="#fff" text-anchor="middle">
+    <text x="600" y="330" font-size="132" font-weight="900" letter-spacing="10">VELVETNOIR</text>
+    <text x="600" y="410" font-size="44" font-weight="700" letter-spacing="18">WORLD TOUR</text>
+    <text x="600" y="490" font-size="58" font-weight="300" letter-spacing="24" fill="#ffd1e6">[AFTERGLOW]</text>
+    <text x="600" y="690" font-size="30" font-weight="700" letter-spacing="10">IN HANOI · 12–13.12.2026 · MY DINH</text>
+  </g>
+</svg>

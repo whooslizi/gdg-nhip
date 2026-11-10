@@ -286,6 +286,29 @@ async function updateShowtime(req, res) {
   }
 }
 
+const DELETE_REFUSED = {
+  not_found: [404, "EVENT_NOT_FOUND", "Event not found"],
+  locked: [403, "EVENT_LOCKED", "This event is locked and cannot be deleted"],
+  has_bookings: [409, "EVENT_HAS_BOOKINGS", "This event already has bookings and cannot be deleted"],
+};
+
+async function deleteEvent(req, res) {
+  try {
+    const eventId = parseId(req.params.eventId);
+    if (!eventId) {
+      return res.status(400).json({ success: false, message: "Invalid eventId" });
+    }
+
+    const data = await adminService.deleteEvent(eventId);
+    if (data?.result === "deleted") return res.status(200).json({ success: true, data });
+
+    const [status, code, message] = DELETE_REFUSED[data?.result] ?? [500, "INTERNAL", "Could not delete event"];
+    return res.status(status).json({ success: false, code, message });
+  } catch (error) {
+    return handleError(res, error);
+  }
+}
+
 module.exports = {
   deleteArea,
   deleteCinema,
@@ -295,6 +318,7 @@ module.exports = {
   createRoom,
   createEvent,
   updateEvent,
+  deleteEvent,
   createShowtime,
   updateShowtime,
 };

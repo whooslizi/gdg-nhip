@@ -17,3 +17,7 @@ depict the actual events or venues.
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------- |
 | ../media/cat.webm (480p) | [Three orange kittens following their mother](https://commons.wikimedia.org/wiki/File:Three_orange_kittens_following_their_mother.webm) | Jeromi Mikhael | CC0     |
 | ../media/horse-in-motion.gif | [The Horse in Motion, animated](https://commons.wikimedia.org/wiki/File:Muybridge_race_horse_animated.gif) | Eadweard Muybridge (photos, 1878) | Public domain |
+
+## Drawn for this project
+
+`velvetnoir-afterglow.svg`, `nmh-cig.svg` and `gdg-boys-day-2026.svg` are simple typographic posters made for nhịp. VELVETNOIR is a made-up group.

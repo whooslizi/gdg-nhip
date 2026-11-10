@@ -75,6 +75,8 @@ export interface SeatMap {
   activeHold: { id: string; expiresAt: string } | null;
   maxSeatsPerHold: number;
   serverTime: string;
+  /** 'zones': a big event sold by zone (one ticket type and one row per zone), not by seat. */
+  layout?: 'seats' | 'zones';
 }
 
 export interface SeatChangeMessage {
