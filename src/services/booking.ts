@@ -7,6 +7,8 @@ const DEVICE_BOOKINGS_KEY = 'nhip-live-bookings';
 interface DeviceBooking {
   id: string;
   email: string;
+  /** Shown once by the payment response; kept so this device can cancel without retyping it. */
+  cancelCode?: string;
 }
 
 function readDeviceBookings(): DeviceBooking[] {
@@ -22,10 +24,12 @@ function readDeviceBookings(): DeviceBooking[] {
   }
 }
 
-function rememberDeviceBooking(id: string, email: string) {
+function rememberDeviceBooking(id: string, email: string, cancelCode?: string) {
   try {
-    const bookings = readDeviceBookings().filter((booking) => booking.id !== id);
-    bookings.unshift({ id, email });
+    const stored = readDeviceBookings();
+    cancelCode ??= stored.find((booking) => booking.id === id)?.cancelCode;
+    const bookings = stored.filter((booking) => booking.id !== id);
+    bookings.unshift({ id, email, ...(cancelCode && { cancelCode }) });
     localStorage.setItem(DEVICE_BOOKINGS_KEY, JSON.stringify(bookings));
   } catch {
     // Booking remains valid if local device storage is unavailable.
@@ -131,6 +135,7 @@ export async function confirmHold(
     price,
     result: 'success',
   });
+  rememberDeviceBooking(String(payment.bookingId), buyer.email, payment.cancelCode);
   return getBooking(String(payment.bookingId), buyer.email);
 }
 
@@ -141,7 +146,13 @@ export const createMockPayment = (input: {
   userEmail: string;
   price: number;
   result: 'success' | 'failed';
-}) => api<{ paymentId: number; bookingId: string; bookingDbId: number; bookingToken: string }>('/payments/mock', {
+}) => api<{
+  paymentId: number;
+  bookingId: string;
+  bookingDbId: number;
+  bookingToken: string;
+  cancelCode?: string;
+}>('/payments/mock', {
   method: 'POST',
   body: input,
 });
@@ -149,12 +160,14 @@ export const createMockPayment = (input: {
 export async function getBooking(bookingId: string, email?: string) {
   if (!API_URL) return api<Booking>(`/bookings/${bookingId}`);
 
-  const userEmail = email ?? readDeviceBookings().find((booking) => booking.id === bookingId)?.email;
+  const device = readDeviceBookings().find((booking) => booking.id === bookingId);
+  const userEmail = email ?? device?.email;
   if (!userEmail) throw new ApiError(400, 'BOOKING_EMAIL_REQUIRED', 'Enter the email used for this booking.');
   const params = new URLSearchParams({ email: userEmail });
   const booking = await api<Booking>(`/bookings/${encodeURIComponent(bookingId)}?${params}`);
   rememberDeviceBooking(booking.id, booking.email);
-  return booking;
+  // The server never returns the cancel code again; only the booking device knows it.
+  return device?.cancelCode ? { ...booking, cancelCode: device.cancelCode } : booking;
 }
 
 export async function listMyBookings() {
@@ -175,7 +188,9 @@ export async function listMyBookings() {
   try {
     localStorage.setItem(
       DEVICE_BOOKINGS_KEY,
-      JSON.stringify(available.map((booking) => ({ id: booking.id, email: booking.email }))),
+      JSON.stringify(
+        available.map(({ id, email, cancelCode }) => ({ id, email, ...(cancelCode && { cancelCode }) })),
+      ),
     );
   } catch {
     // Keep returning bookings if local device storage is unavailable.
@@ -208,12 +223,10 @@ export async function lookupBooking(
 
 export const cancelBooking = (
   bookingId: string,
-  verification: string,
+  cancelCode: string,
   turnstileToken?: string | null,
 ) =>
-  api<Booking>(`/bookings/${bookingId}/cancel`, {
+  api<Booking>(`/bookings/${encodeURIComponent(bookingId)}/cancel`, {
     method: 'POST',
-    body: API_URL
-      ? { email: verification, turnstileToken: turnstileToken ?? undefined }
-      : { cancelCode: verification },
+    body: { cancelCode, turnstileToken: turnstileToken ?? undefined },
   });

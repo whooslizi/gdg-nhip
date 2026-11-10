@@ -1,4 +1,5 @@
 
+const crypto = require("node:crypto");
 const supabase = require("../config/supabase");
 const { createTicketTokenService } = require("./ticket-token.service");
 
@@ -15,6 +16,34 @@ function ticketTokenFor(booking, showtimeId) {
   }
 }
 
+// Same alphabet and XXXX-XXXX shape as booking codes and the mock API's cancelCode.
+const CANCEL_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const CANCEL_CODE = /^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/;
+
+function newCancelCode() {
+  const pick = () => CANCEL_ALPHABET[crypto.randomInt(CANCEL_ALPHABET.length)];
+  const group = () => Array.from({ length: 4 }, pick).join("");
+  return `${group()}-${group()}`;
+}
+
+const sha256 = (salt, code) => crypto.createHash("sha256").update(`${salt}:${code}`).digest("hex");
+
+// Stored as "salt:hash"; the plain code is never written to the database.
+function hashCancelCode(code) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  return `${salt}:${sha256(salt, code)}`;
+}
+
+function cancelCodeMatches(code, stored) {
+  const [salt, expected] = String(stored).split(":");
+  if (!salt || !expected || !CANCEL_CODE.test(code)) return false;
+  const given = Buffer.from(sha256(salt, code), "hex");
+  const wanted = Buffer.from(expected, "hex");
+  return given.length === wanted.length && crypto.timingSafeEqual(given, wanted);
+}
+
+const codedError = (code, message) => Object.assign(new Error(message), { code });
+
 async function processMockPayment({
   holdToken,
   userName,
@@ -26,6 +55,7 @@ async function processMockPayment({
   const expectedPrice = await heldSeatsPrice(holdToken);
   if (price !== expectedPrice) throw new Error("Price does not match the held seats");
 
+  const cancelCode = newCancelCode();
   const { data, error } = await supabase.rpc("process_mock_payment", {
     p_hold_token: holdToken,
     p_user_name: userName,
@@ -33,6 +63,7 @@ async function processMockPayment({
     p_user_email: userEmail,
     p_price: price,
     p_result: result,
+    p_cancel_code_hash: hashCancelCode(cancelCode),
   });
 
   if (error) {
@@ -40,7 +71,8 @@ async function processMockPayment({
     throw error;
   }
 
-  return data;
+  // The only time the plain code leaves the server.
+  return data?.success && data.data ? { ...data, data: { ...data.data, cancelCode } } : data;
 }
 
 async function getPaymentById(paymentId) {
@@ -130,7 +162,9 @@ async function getPaymentById(paymentId) {
   };
 }
 
-function seatPrice(seatType) {
+// Zone tickets carry their own price; hall seats are priced by type.
+function seatPrice(seatType, price = null) {
+  if (price !== null && price !== undefined) return Number(price);
   switch (String(seatType).trim().toLowerCase()) {
     case "standard":
     case "normal":
@@ -153,11 +187,11 @@ async function heldSeatsPrice(holdToken) {
 
   const { data: seats, error: seatsError } = await supabase
     .from("seats")
-    .select("seatid, seattype")
+    .select("seatid, seattype, price")
     .in("seatid", held.map((item) => item.seatid));
   if (seatsError) throw seatsError;
 
-  const prices = seats.map((seat) => seatPrice(seat.seattype));
+  const prices = seats.map((seat) => seatPrice(seat.seattype, seat.price));
   if (prices.length !== held.length || prices.includes(0)) {
     throw new Error("Some held seats have no configured price");
   }
@@ -174,25 +208,12 @@ function eventSlug(eventName) {
     .replace(/^-|-$/g, "");
 }
 
-async function findBookingRecord(bookingReference) {
-  const reference = String(bookingReference).trim();
-  const { data: codedBooking, error: codeError } = await supabase
-    .from("bookings")
-    .select("bookingid, bookingcode, username, userphone, useremail, price, status, qrversion, checkedinat, checkedinby")
-    .eq("bookingcode", reference.toUpperCase())
-    .maybeSingle();
-
-  if (codeError) throw codeError;
-  if (codedBooking) return codedBooking;
-
-  if (!/^\d+$/.test(reference)) return null;
-  const legacyId = Number(reference);
-  if (!Number.isSafeInteger(legacyId) || legacyId <= 0) return null;
-
+// Only BK-XXXX-XXXX codes; the sequential bookingid is never accepted from the public.
+async function findBookingRecord(bookingCode) {
   const { data, error } = await supabase
     .from("bookings")
-    .select("bookingid, bookingcode, username, userphone, useremail, price, status, qrversion, checkedinat, checkedinby")
-    .eq("bookingid", legacyId)
+    .select("bookingid, bookingcode, username, userphone, useremail, price, status, qrversion, checkedinat, checkedinby, cancel_code_hash")
+    .eq("bookingcode", String(bookingCode).trim().toUpperCase())
     .maybeSingle();
 
   if (error) throw error;
@@ -220,7 +241,7 @@ async function getBookingById(bookingReference, userEmail) {
       .maybeSingle(),
     supabase
       .from("booking_seats")
-      .select("showtimeid, seatid, rowlabel, seatnumber, seattype")
+      .select("showtimeid, seatid, rowlabel, seatnumber, seattype, seats(layout, price)")
       .eq("bookingid", bookingId)
       .order("seatid"),
   ]);
@@ -304,10 +325,13 @@ async function getBookingById(bookingReference, userEmail) {
       city: null,
     },
     items: (bookedSeats ?? []).map((seat) => ({
-      seatLabel: `${seat.rowlabel}${seat.seatnumber}`,
+      // A zone ticket reads "GOLD 1 · #12"; a hall seat keeps its row and number.
+      seatLabel: seat.seats?.layout && seat.seats.layout !== "hall"
+        ? `${seat.seattype} · #${seat.seatnumber}`
+        : `${seat.rowlabel}${seat.seatnumber}`,
       section: venue ?? "",
       ticketType: seat.seattype,
-      unitPriceMinor: seatPrice(seat.seattype),
+      unitPriceMinor: seatPrice(seat.seattype, seat.seats?.price),
     })),
     totalMinor: Number(booking.price),
     ticketToken: ticketTokenFor(booking, showtimeId),
@@ -319,19 +343,24 @@ async function getBookingById(bookingReference, userEmail) {
   };
 }
 
-async function cancelBooking(bookingReference, userEmail) {
-  const booking = await findBookingRecord(bookingReference);
-  if (!booking || booking.useremail.toLowerCase() !== userEmail.trim().toLowerCase()) {
-    throw new Error("Booking not found");
+async function cancelBooking(bookingCode, cancelCode) {
+  const booking = await findBookingRecord(bookingCode);
+  if (!booking) throw new Error("Booking not found");
+  // Bookings from before cancel codes existed have no hash; only organisers can cancel those.
+  if (!booking.cancel_code_hash) {
+    throw codedError("CANCEL_NOT_AVAILABLE", "This booking can only be cancelled by the organisers");
+  }
+  if (!cancelCodeMatches(String(cancelCode).trim().toUpperCase(), booking.cancel_code_hash)) {
+    throw codedError("INVALID_CANCEL_CODE", "Wrong cancellation code");
   }
 
-  const { data, error } = await supabase.rpc("cancel_booking", {
+  const { error } = await supabase.rpc("cancel_booking", {
     p_booking_id: booking.bookingid,
-    p_user_email: userEmail,
+    p_user_email: booking.useremail,
   });
 
   if (error) throw error;
-  return data;
+  return getBookingById(booking.bookingcode, booking.useremail);
 }
 
 module.exports = {
