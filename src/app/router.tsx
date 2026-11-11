@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 import { EventBrowser } from '@/components/events/EventBrowser';
 import { Layout } from '@/components/layout/Layout';
+import { AcknowledgementsPage } from '@/pages/AcknowledgementsPage';
 import { BookingPage } from '@/pages/BookingPage';
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 import { EventDetailPage } from '@/pages/EventDetailPage';
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: '/booking/:bookingId', element: <BookingPage /> },
       { path: '/my-bookings', element: <MyBookingsPage /> },
       { path: '/admin', element: <AdminDashboardPage /> },
+      { path: '/acknowledgements', element: <AcknowledgementsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

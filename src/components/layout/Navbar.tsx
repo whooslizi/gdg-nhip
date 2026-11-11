@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Moon, Search, Sun, Ticket } from 'lucide-react';
+import { Heart, Moon, Search, Sun, Ticket } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { categoryName } from '@/lib/format';
@@ -80,6 +80,13 @@ export function Navbar() {
         >
           <Ticket className="size-4" aria-hidden />
           {t('nav.findTickets')}
+        </Link>
+        <Link
+          to="/acknowledgements"
+          className="flex items-center gap-1.5 text-sm font-semibold hover:text-wine-700"
+        >
+          <Heart className="size-4" aria-hidden />
+          {t('nav.thanks')}
         </Link>
         <button
           type="button"

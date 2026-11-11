@@ -8,6 +8,24 @@ const vi = {
   'nav.findTickets': 'Tra cứu vé',
   'nav.darkMode': 'Chế độ tối',
   'nav.lightMode': 'Chế độ sáng',
+  'nav.thanks': 'Lời cảm ơn',
+  'thanks.title': 'Lời cảm ơn',
+  'thanks.greeting': 'Gửi mọi người,',
+  'thanks.intro':
+    'nhịp là sản phẩm của Nhóm 3, ban Web Developer, trong vòng Probation của GDG-HUST. Ý tưởng ban đầu khá đơn giản: một trang web để sinh viên HUST mua vé sự kiện trong trường, chọn chỗ ngồi, nhận vé có mã QR và vào cửa mà không phải xếp hàng hay nhắn tin hỏi còn ghế không. Làm ra nó thì không đơn giản như vậy.',
+  'thanks.journey':
+    'Sau vài tuần, nhịp có phòng chờ ảo, sơ đồ ghế giữ chỗ theo thời gian thực, thanh toán mô phỏng, mã huỷ vé, vé QR có chữ ký và trang quản trị để soát vé ở cửa. Không phải thứ gì cũng hoàn hảo, nhưng mọi thứ đều chạy được, và chúng mình học được rất nhiều trên đường làm ra nó. Trước khi khép lại dự án, chúng mình muốn gửi đôi lời cảm ơn.',
+  'thanks.mentors':
+    'Cảm ơn anh Nguyễn Quang Trung, Trưởng ban Web Developer, và anh Đỗ Mạnh Hiệp, mentor của nhóm, đã đồng hành cùng chúng mình trong vòng Probation.',
+  'thanks.team':
+    'Cảm ơn ba thành viên Nhóm 3 đã cùng nhau xây dựng nhịp, từ sơ đồ ghế đầu tiên đến lần quét mã QR cuối cùng. Mỗi người một phần việc, có lúc bất đồng, có lúc trễ hạn, nhưng cuối cùng vẫn ngồi lại với nhau cho đến khi xong. Cảm ơn vì không ai bỏ cuộc giữa chừng.',
+  'thanks.gdgAfter':
+    'vì vòng Probation, vì đã cho chúng mình một đề bài đủ khó để phải học thêm, và vì cơ hội được làm một sản phẩm gần với thực tế đến vậy ngay khi còn là sinh viên.',
+  'thanks.closing':
+    'nhịp có thể dừng lại ở đây, nhưng những gì chúng mình học được thì sẽ còn đi tiếp. Hẹn gặp lại mọi người ở dự án sau.',
+  'thanks.gdgBefore': 'Cảm ơn',
+  'thanks.signoff': 'Thân mến,',
+  'thanks.signature': 'Nhóm 3',
   'hero.prev': 'Slide trước',
   'hero.next': 'Slide tiếp',
   'hero.goTo': 'Đến slide',
@@ -182,6 +200,24 @@ const en: Record<Key, string> = {
   'nav.findTickets': 'Find my tickets',
   'nav.darkMode': 'Dark mode',
   'nav.lightMode': 'Light mode',
+  'nav.thanks': 'Acknowledgements',
+  'thanks.title': 'Acknowledgements',
+  'thanks.greeting': 'Dear all,',
+  'thanks.intro':
+    'nhịp was built by Group 3 of the Web Developer branch during the GDG-HUST Probation round. The idea was simple: a website where HUST students can buy tickets to campus events, pick their seats, get a QR ticket and walk in, without queueing at a desk or messaging someone to ask if seats are left. Building it was less simple.',
+  'thanks.journey':
+    'A few weeks later, nhịp has a virtual waiting room, a live seat map with timed holds, a simulated checkout, cancellation codes, signed QR tickets and an admin page for checking people in at the door. Not everything is perfect, but everything works, and we learned a lot getting here. Before we wrap the project up, we would like to say thank you.',
+  'thanks.mentors':
+    'Thank you to Nguyễn Quang Trung, Head of the Web Developer branch, and to Đỗ Mạnh Hiệp, our mentor, for being with us through the Probation round.',
+  'thanks.team':
+    'Thank you to the three members of Group 3 who built nhịp together, from the first seat map to the last QR scan. Each of us took a piece of the work; sometimes we disagreed, sometimes we ran late, but we always sat back down together until it was done. Thank you for never giving up halfway.',
+  'thanks.gdgAfter':
+    'for the Probation round, for a challenge hard enough that we had to keep learning, and for the chance to build something this close to a real product while we are still students.',
+  'thanks.closing':
+    'nhịp may stop here, but what we learned building it will carry on. See you all in the next project.',
+  'thanks.gdgBefore': 'Thank you to',
+  'thanks.signoff': 'Best wishes,',
+  'thanks.signature': 'Group 3',
   'hero.prev': 'Previous slide',
   'hero.next': 'Next slide',
   'hero.goTo': 'Go to slide',
