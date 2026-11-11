@@ -14,7 +14,6 @@ export function AcknowledgementsPage() {
         <p>{t('thanks.intro')}</p>
         <p>{t('thanks.journey')}</p>
         <p>{t('thanks.mentors')}</p>
-        <p>{t('thanks.team')}</p>
         <p>
           {t('thanks.gdgBefore')}{' '}
           <a
@@ -28,6 +27,7 @@ export function AcknowledgementsPage() {
           </a>{' '}
           {t('thanks.gdgAfter')}
         </p>
+        <p>{t('thanks.team')}</p>
         <p>{t('thanks.closing')}</p>
       </div>
 

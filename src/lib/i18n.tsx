@@ -16,14 +16,14 @@ const vi = {
   'thanks.journey':
     'Sau vài tuần, nhịp có phòng chờ ảo, sơ đồ ghế giữ chỗ theo thời gian thực, thanh toán mô phỏng, mã huỷ vé, vé QR có chữ ký và trang quản trị để soát vé ở cửa. Không phải thứ gì cũng hoàn hảo, nhưng mọi thứ đều chạy được, và chúng mình học được rất nhiều trên đường làm ra nó. Trước khi khép lại dự án, chúng mình muốn gửi đôi lời cảm ơn.',
   'thanks.mentors':
-    'Cảm ơn anh Nguyễn Quang Trung, Trưởng ban Web Developer, và anh Đỗ Mạnh Hiệp, mentor của nhóm, đã đồng hành cùng chúng mình trong vòng Probation.',
+    'Chúng mình xin cảm ơn anh Nguyễn Quang Trung, Trưởng ban Web Developer, và anh Đỗ Mạnh Hiệp, mentor của nhóm, đã đồng hành cùng chúng mình trong vòng Probation.',
   'thanks.team':
-    'Cảm ơn ba thành viên Nhóm 3 đã cùng nhau xây dựng nhịp, từ sơ đồ ghế đầu tiên đến lần quét mã QR cuối cùng. Mỗi người một phần việc, có lúc bất đồng, có lúc trễ hạn, nhưng cuối cùng vẫn ngồi lại với nhau cho đến khi xong. Cảm ơn vì không ai bỏ cuộc giữa chừng.',
+    'Và cuối cùng, ba thành viên Nhóm 3 muốn cảm ơn lẫn nhau: vì đã cùng xây dựng nhịp từ sơ đồ ghế đầu tiên đến lần quét mã QR cuối cùng, vì mỗi người một phần việc, có lúc bất đồng, có lúc trễ hạn, nhưng vẫn ngồi lại với nhau cho đến khi xong, và vì không ai bỏ cuộc giữa chừng.',
   'thanks.gdgAfter':
     'vì vòng Probation, vì đã cho chúng mình một đề bài đủ khó để phải học thêm, và vì cơ hội được làm một sản phẩm gần với thực tế đến vậy ngay khi còn là sinh viên.',
   'thanks.closing':
     'nhịp có thể dừng lại ở đây, nhưng những gì chúng mình học được thì sẽ còn đi tiếp. Hẹn gặp lại mọi người ở dự án sau.',
-  'thanks.gdgBefore': 'Cảm ơn',
+  'thanks.gdgBefore': 'Chúng mình xin cảm ơn',
   'thanks.signoff': 'Thân mến,',
   'thanks.signature': 'Nhóm 3',
   'hero.prev': 'Slide trước',
@@ -210,7 +210,7 @@ const en: Record<Key, string> = {
   'thanks.mentors':
     'Thank you to Nguyễn Quang Trung, Head of the Web Developer branch, and to Đỗ Mạnh Hiệp, our mentor, for being with us through the Probation round.',
   'thanks.team':
-    'Thank you to the three members of Group 3 who built nhịp together, from the first seat map to the last QR scan. Each of us took a piece of the work; sometimes we disagreed, sometimes we ran late, but we always sat back down together until it was done. Thank you for never giving up halfway.',
+    'And finally, the three of us in Group 3 want to thank each other: for building nhịp together from the first seat map to the last QR scan, for each taking a piece of the work, for disagreeing and running late and still sitting back down together until it was done, and for never giving up halfway.',
   'thanks.gdgAfter':
     'for the Probation round, for a challenge hard enough that we had to keep learning, and for the chance to build something this close to a real product while we are still students.',
   'thanks.closing':
