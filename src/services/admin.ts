@@ -11,6 +11,8 @@ export interface AdminEvent {
   duration: number;
   startat: string;
   endat: string;
+  /** Locked events can't be deleted. Absent before the zone-seating migration runs. */
+  locked?: boolean;
 }
 
 export interface AdminShowtime {
@@ -136,6 +138,12 @@ export const updateAdminEvent = (
   token: string,
   body: Record<string, unknown>,
 ) => api<AdminEvent>(`/admin/events/${eventId}`, { method: 'PATCH', body, authToken: token });
+
+export const deleteAdminEvent = (eventId: number, token: string) =>
+  api<{ result: 'deleted'; eventId: number }>(`/admin/events/${eventId}`, {
+    method: 'DELETE',
+    authToken: token,
+  });
 
 export const createAdminShowtime = (token: string, body: Record<string, unknown>) =>
   api<AdminShowtime>('/admin/showtimes', { method: 'POST', body, authToken: token });

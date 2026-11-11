@@ -19,16 +19,19 @@ async function getShowtimeById(showtimeId) {
 async function getShowtimeSeats(showtimeId) {
   const { data: showtime, error: showtimeError } = await supabase
     .from("showtimes")
-    .select("showtimeid, eventid, roomid")
+    .select("showtimeid, eventid, roomid, events(seatlayout)")
     .eq("showtimeid", showtimeId)
     .maybeSingle();
 
   if (showtimeError) throw showtimeError;
   if (!showtime) return null;
 
+  // Each event uses one seat map: the shared hall, or its own zones for a big event.
+  const layout = showtime.events?.seatlayout ?? "hall";
   const { data: seats, error: seatsError } = await supabase
     .from("seats")
-    .select("seatid, rowlabel, seatnumber, seattype")
+    .select("seatid, rowlabel, seatnumber, seattype, price")
+    .eq("layout", layout)
     .order("rowlabel")
     .order("seatnumber");
 
@@ -51,6 +54,7 @@ async function getShowtimeSeats(showtimeId) {
     eventId: showtime.eventid,
     showtimeId: showtime.showtimeid,
     roomId: showtime.roomid,
+    layout,
 
     seats: seats.map((seat) => {
       const state = stateMap.get(seat.seatid);
@@ -71,6 +75,7 @@ async function getShowtimeSeats(showtimeId) {
         rowLabel: seat.rowlabel,
         seatNumber: seat.seatnumber,
         seatType: seat.seattype,
+        price: seat.price === null ? null : Number(seat.price),
         status,
       };
     }),

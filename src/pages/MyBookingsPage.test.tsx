@@ -37,7 +37,7 @@ describe('MyBookingsPage live API', () => {
     expect(screen.getByLabelText('Email')).toBeRequired();
   });
 
-  it('looks up and cancels a booking by booking ID and checkout email', async () => {
+  it('looks up by booking ID and email, then cancels with the cancel code', async () => {
     let currentBooking = booking;
     const fetch = mockFetch((url, init) => {
       const body = init.body ? JSON.parse(String(init.body)) : {};
@@ -71,10 +71,11 @@ describe('MyBookingsPage live API', () => {
       String(url).endsWith('/bookings/lookup'),
     )?.[1]?.body))).toEqual({ email: 'buyer@example.test', bookingId: 'BK-ABCD-EFGH' });
 
+    await userEvent.type(screen.getByLabelText('Cancellation code'), 'abcd-2345');
     await userEvent.click(screen.getByRole('button', { name: 'Cancel booking' }));
     expect(await screen.findByRole('heading', { name: 'Booking cancelled', level: 1 })).toBeInTheDocument();
     expect(JSON.parse(String(fetch.mock.calls.find(([url]) =>
       String(url).endsWith('/bookings/BK-ABCD-EFGH/cancel'),
-    )?.[1]?.body))).toEqual({ email: 'buyer@example.test' });
+    )?.[1]?.body))).toEqual({ cancelCode: 'ABCD-2345' });
   });
 });

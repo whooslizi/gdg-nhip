@@ -5,6 +5,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { BookingSummary, type SelectedSeat } from '@/components/seating/BookingSummary';
 import { SeatingMap } from '@/components/seating/SeatingMap';
 import { SeatLegend } from '@/components/seating/SeatLegend';
+import { ZonePicker } from '@/components/seating/ZonePicker';
 import { WaitingRoom } from '@/components/seating/WaitingRoom';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/States';
@@ -348,7 +349,9 @@ export function SeatSelectionPage() {
       </Link>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-bold">{t('seats.title')}</h1>
+          <h1 className="font-display text-3xl font-bold">
+            {t(map.layout === 'zones' ? 'zones.title' : 'seats.title')}
+          </h1>
           {isAdmin && (
             <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-wine-700">
               <ShieldCheck className="size-4" aria-hidden />
@@ -401,14 +404,25 @@ export function SeatSelectionPage() {
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_360px]">
         {/* min-w-0: let the map scroll inside its box instead of widening the page. */}
         <div className="min-w-0 space-y-4">
-          <SeatLegend />
-          <SeatingMap
-            map={shownMap ?? map}
-            selected={selected}
-            interactive={bookable && !holdActive}
-            onToggle={toggle}
-          />
-          {map.priceConfigured === false ? (
+          {map.layout === 'zones' ? (
+            <ZonePicker
+              map={map}
+              selected={selected}
+              interactive={bookable && !holdActive}
+              onToggle={toggle}
+            />
+          ) : (
+            <>
+              <SeatLegend />
+              <SeatingMap
+                map={shownMap ?? map}
+                selected={selected}
+                interactive={bookable && !holdActive}
+                onToggle={toggle}
+              />
+            </>
+          )}
+          {map.layout === 'zones' ? null : map.priceConfigured === false ? (
             <p className="text-sm text-ink-muted">{t('seats.paymentUnavailable')}</p>
           ) : (
             <ul className="flex flex-wrap gap-4 text-sm text-ink-muted">

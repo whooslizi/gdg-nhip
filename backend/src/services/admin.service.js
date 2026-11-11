@@ -127,6 +127,13 @@ async function updateEvent(eventId, payload) {
   return data;
 }
 
+// SQL does the checks and the delete in one transaction; see delete_event().
+async function deleteEvent(eventId) {
+  const { data, error } = await supabase.rpc("delete_event", { p_event_id: eventId });
+  if (error) throw error;
+  return data;
+}
+
 async function createShowtime(payload) {
   const { data, error } = await supabase
     .from("showtimes")
@@ -197,6 +204,7 @@ module.exports = {
   deleteRoom,
   createEvent,
   updateEvent,
+  deleteEvent,
   createShowtime,
   getShowtime,
   updateShowtime,

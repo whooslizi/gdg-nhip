@@ -1,5 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, CalendarPlus, Check, LogOut, Pencil, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
+import {
+  Building2,
+  CalendarPlus,
+  Check,
+  Lock,
+  LogOut,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ApiError, API_URL } from '@/lib/api-client';
@@ -15,6 +26,7 @@ import {
   createAdminShowtime,
   deleteAdminArea,
   deleteAdminCinema,
+  deleteAdminEvent,
   deleteAdminRoom,
   getAdminFacilityTree,
   getAdminSession,
@@ -360,10 +372,30 @@ function EventsPanel({
     },
     onSuccess: (saved) => {
       setSelectedId(saved.eventid);
-      setMessage(selectedId ? 'Đã cập nhật sự kiện.' : 'Đã tạo sự kiện.');
+      setMessage(
+        selectedId
+          ? 'Đã cập nhật sự kiện.'
+          : 'Đã tạo sự kiện. Sang tab Lịch chiếu thêm suất chiếu thì mới bán được vé.',
+      );
       return queryClient.invalidateQueries({ queryKey: ['admin-events'] });
     },
     onError: (error) => onError(error, setMessage),
+  });
+
+  const remove = useMutation({
+    mutationFn: (eventId: number) => deleteAdminEvent(eventId, token),
+    onSuccess: (_, eventId) => {
+      if (selectedId === eventId) selectEvent(null);
+      setMessage('Đã xoá sự kiện.');
+      return queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === 'EVENT_HAS_BOOKINGS')
+        setMessage('Sự kiện đã có người đặt vé nên không xoá được.');
+      else if (error instanceof ApiError && error.code === 'EVENT_LOCKED')
+        setMessage('Sự kiện này đã được khoá, không xoá được.');
+      else onError(error, setMessage);
+    },
   });
 
   const field = (
@@ -398,12 +430,12 @@ function EventsPanel({
         </div>
         <ul className="mt-4 divide-y divide-line border-y border-line">
           {events.map((event) => (
-            <li key={event.eventid}>
+            <li key={event.eventid} className="flex items-center gap-2">
               <button
                 type="button"
                 aria-pressed={selectedId === event.eventid}
                 onClick={() => selectEvent(event.eventid)}
-                className={`flex w-full items-center justify-between gap-4 py-4 text-left ${selectedId === event.eventid ? 'text-wine-700' : 'hover:text-wine-700'}`}
+                className={`flex min-w-0 flex-1 items-center justify-between gap-4 py-4 text-left ${selectedId === event.eventid ? 'text-wine-700' : 'hover:text-wine-700'}`}
               >
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{event.eventname}</span>
@@ -413,6 +445,28 @@ function EventsPanel({
                 </span>
                 <Pencil className="size-4 shrink-0" aria-hidden />
               </button>
+              {event.locked ? (
+                <span
+                  title="Sự kiện được khoá, không xoá được"
+                  className="grid size-9 shrink-0 place-items-center text-ink-muted"
+                >
+                  <Lock className="size-4" aria-hidden />
+                  <span className="sr-only">Đã khoá</span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`Xoá ${event.eventname}`}
+                  disabled={remove.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Xoá "${event.eventname}" cùng mọi suất chiếu? Không hoàn tác được.`))
+                      remove.mutate(event.eventid);
+                  }}
+                  className="grid size-9 shrink-0 place-items-center rounded-md text-wine-700 hover:bg-blush-100 disabled:opacity-40"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
+              )}
             </li>
           ))}
         </ul>

@@ -40,6 +40,8 @@ interface RestSeat {
   rowLabel: string;
   seatNumber: number;
   seatType: string;
+  /** Set for zone tickets; hall seats are priced by type. */
+  price?: number | null;
   status: string;
 }
 
@@ -191,7 +193,8 @@ export async function listShowtimes(
   }));
 }
 
-const ticketTypeFor = (seatType: string) => {
+const ticketTypeFor = (seatType: string, price?: number | null) => {
+  if (price != null) return { id: slugify(seatType), name: seatType, priceMinor: price };
   switch (seatType.trim().toLowerCase()) {
     case 'normal':
     case 'standard':
@@ -215,6 +218,7 @@ export async function getSeatMap(
     eventId: number;
     showtimeId: number;
     roomId: number;
+    layout?: string;
     seats: RestSeat[];
   }>(`/showtimes/${showtimeId}/seats`, { signal });
   const event = await eventPromise;
@@ -230,11 +234,12 @@ export async function getSeatMap(
         return 'AVAILABLE';
     }
   };
+  const zones = !!result.layout && result.layout !== 'hall';
   const seats = result.seats.map((seat) => {
-    const ticketType = ticketTypeFor(seat.seatType);
+    const ticketType = ticketTypeFor(seat.seatType, seat.price);
     return {
       id: String(seat.seatId),
-      seatLabel: `${seat.rowLabel}${seat.seatNumber}`,
+      seatLabel: zones ? `${seat.seatType} · #${seat.seatNumber}` : `${seat.rowLabel}${seat.seatNumber}`,
       rowLabel: seat.rowLabel,
       seatNumber: seat.seatNumber,
       ticketTypeId: ticketType.id,
@@ -247,7 +252,7 @@ export async function getSeatMap(
   });
   const ticketTypes = [...new Map(
     result.seats.map((seat) => {
-      const type = ticketTypeFor(seat.seatType);
+      const type = ticketTypeFor(seat.seatType, seat.price);
       return [type.id, type] as const;
     }),
   ).values()];
@@ -279,6 +284,7 @@ export async function getSeatMap(
     activeHold: null,
     maxSeatsPerHold: 8,
     serverTime: new Date().toISOString(),
+    layout: zones ? 'zones' : 'seats',
   } satisfies SeatMap;
 }
 

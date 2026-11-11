@@ -12,6 +12,9 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "overrides": {
+    "minimatch": "^11.0.1"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
     "cors": "^2.8.6",

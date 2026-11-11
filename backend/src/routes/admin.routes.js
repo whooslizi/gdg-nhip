@@ -28,6 +28,7 @@ router.delete("/rooms/:roomId", adminController.deleteRoom);
 
 router.post("/events", adminController.createEvent);
 router.patch("/events/:eventId", adminController.updateEvent);
+router.delete("/events/:eventId", adminController.deleteEvent);
 
 router.post("/showtimes", adminController.createShowtime);
 router.patch(

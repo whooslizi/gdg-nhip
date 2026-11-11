@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type FormEvent } from 'react';
 import { Turnstile, type TurnstileHandle } from '@/components/Turnstile';
 import { Button } from '@/components/ui/Button';
-import { API_URL, ApiError, isCaptchaError } from '@/lib/api-client';
+import { ApiError, isCaptchaError } from '@/lib/api-client';
 import { formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
 import { turnstileEnabled } from '@/lib/turnstile';
@@ -21,13 +21,14 @@ export function CancelBooking({
   onCancelled?: (booking: Booking) => void;
 }) {
   const { t, locale } = useI18n();
-  const [cancelCode, setCancelCode] = useState('');
+  // Prefilled on the device that booked; anywhere else the buyer types it in.
+  const [cancelCode, setCancelCode] = useState(booking.cancelCode ?? '');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captcha = useRef<TurnstileHandle>(null);
   const queryClient = useQueryClient();
   const cancel = useMutation({
     mutationFn: (token: string | null) =>
-      cancelBooking(booking.id, API_URL ? booking.email : cancelCode.trim(), token),
+      cancelBooking(booking.id, cancelCode.trim(), token),
     onSuccess: (b) => {
       onCancelled?.(b);
       return queryClient.invalidateQueries();
@@ -44,23 +45,19 @@ export function CancelBooking({
       {booking.status !== 'CANCELLED' && !booking.checkedInAt && !cancel.data && (
         <form onSubmit={submitCancel} className="mt-10 rounded-xl border border-line p-6">
           <h2 className="text-lg font-bold">{t('cancel.title')}</h2>
-          <p className="mt-1 text-sm text-ink-muted">
-            {t(API_URL ? 'cancel.liveBody' : 'cancel.body')}
-          </p>
-          {!API_URL && (
-            <label className="mt-4 block text-sm font-medium">
-              {t('cancel.code')}
-              <input
-                required
-                pattern="[A-Za-z0-9]{4}-[A-Za-z0-9]{4}"
-                placeholder="XXXX-XXXX"
-                autoComplete="off"
-                value={cancelCode}
-                onChange={(e) => setCancelCode(e.target.value.toUpperCase())}
-                className={`${input} font-mono tracking-widest`}
-              />
-            </label>
-          )}
+          <p className="mt-1 text-sm text-ink-muted">{t('cancel.body')}</p>
+          <label className="mt-4 block text-sm font-medium">
+            {t('cancel.code')}
+            <input
+              required
+              pattern="[A-Za-z0-9]{4}-[A-Za-z0-9]{4}"
+              placeholder="XXXX-XXXX"
+              autoComplete="off"
+              value={cancelCode}
+              onChange={(e) => setCancelCode(e.target.value.toUpperCase())}
+              className={`${input} font-mono tracking-widest`}
+            />
+          </label>
           <div className="mt-4">
             <Turnstile action="cancel" onToken={setCaptchaToken} ref={captcha} />
           </div>
@@ -77,9 +74,11 @@ export function CancelBooking({
             <p role="alert" className="mt-3 text-sm text-wine-700">
               {isCaptchaError(cancel.error)
                 ? t('captcha.failed')
-                : cancel.error instanceof ApiError && cancel.error.status === 403
-                  ? t('cancel.wrongCode')
-                  : cancel.error.message}
+                : cancel.error instanceof ApiError && cancel.error.code === 'CANCEL_NOT_AVAILABLE'
+                  ? t('cancel.notAvailable')
+                  : cancel.error instanceof ApiError && cancel.error.status === 403
+                    ? t('cancel.wrongCode')
+                    : cancel.error.message}
             </p>
           )}
         </form>

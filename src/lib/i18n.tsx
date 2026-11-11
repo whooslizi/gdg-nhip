@@ -8,6 +8,24 @@ const vi = {
   'nav.findTickets': 'Tra cứu vé',
   'nav.darkMode': 'Chế độ tối',
   'nav.lightMode': 'Chế độ sáng',
+  'nav.thanks': 'Lời cảm ơn',
+  'thanks.title': 'Lời cảm ơn',
+  'thanks.greeting': 'Gửi mọi người,',
+  'thanks.intro':
+    'nhịp là sản phẩm của Nhóm 3, ban Web Developer, trong vòng Probation của GDG-HUST. Ý tưởng ban đầu khá đơn giản: một trang web để sinh viên HUST mua vé sự kiện trong trường, chọn chỗ ngồi, nhận vé có mã QR và vào cửa mà không phải xếp hàng hay nhắn tin hỏi còn ghế không. Làm ra nó thì không đơn giản như vậy.',
+  'thanks.journey':
+    'Sau vài tuần, nhịp có phòng chờ ảo, sơ đồ ghế giữ chỗ theo thời gian thực, thanh toán mô phỏng, mã huỷ vé, vé QR có chữ ký và trang quản trị để soát vé ở cửa. Không phải thứ gì cũng hoàn hảo, nhưng mọi thứ đều chạy được, và chúng mình học được rất nhiều trên đường làm ra nó. Trước khi khép lại dự án, chúng mình muốn gửi đôi lời cảm ơn.',
+  'thanks.mentors':
+    'Cảm ơn anh Nguyễn Quang Trung, Trưởng ban Web Developer, và anh Đỗ Mạnh Hiệp, mentor của nhóm, đã đồng hành cùng chúng mình trong vòng Probation.',
+  'thanks.team':
+    'Cảm ơn ba thành viên Nhóm 3 đã cùng nhau xây dựng nhịp, từ sơ đồ ghế đầu tiên đến lần quét mã QR cuối cùng. Mỗi người một phần việc, có lúc bất đồng, có lúc trễ hạn, nhưng cuối cùng vẫn ngồi lại với nhau cho đến khi xong. Cảm ơn vì không ai bỏ cuộc giữa chừng.',
+  'thanks.gdgAfter':
+    'vì vòng Probation, vì đã cho chúng mình một đề bài đủ khó để phải học thêm, và vì cơ hội được làm một sản phẩm gần với thực tế đến vậy ngay khi còn là sinh viên.',
+  'thanks.closing':
+    'nhịp có thể dừng lại ở đây, nhưng những gì chúng mình học được thì sẽ còn đi tiếp. Hẹn gặp lại mọi người ở dự án sau.',
+  'thanks.gdgBefore': 'Cảm ơn',
+  'thanks.signoff': 'Thân mến,',
+  'thanks.signature': 'Nhóm 3',
   'hero.prev': 'Slide trước',
   'hero.next': 'Slide tiếp',
   'hero.goTo': 'Đến slide',
@@ -36,6 +54,13 @@ const vi = {
   'cta.OPEN': 'Mua vé',
   'cta.REGISTER': 'Đăng ký',
   'seats.title': 'Chọn chỗ ngồi',
+  'zones.title': 'Chọn vé',
+  'zones.hint': 'Chọn số vé ở mỗi khu. Vị trí cụ thể trong khu do hệ thống xếp.',
+  'zones.stage': 'Sân khấu',
+  'zones.soldOut': 'Hết vé',
+  'zones.left': 'Còn {count} vé',
+  'zones.add': 'Thêm một vé {zone}',
+  'zones.remove': 'Bớt một vé {zone}',
   'seats.adminMode': 'Chế độ admin: không xếp hàng, không giới hạn số ghế',
   'seats.queueRequired': 'Lượt chọn ghế của bạn đã hết hoặc không hợp lệ. Vui lòng quay lại sự kiện và xếp hàng lại.',
   'room.eyebrow': 'Phòng chờ',
@@ -142,7 +167,8 @@ const vi = {
   'cancel.title': 'Muốn hủy vé?',
   'cancel.body':
     'Nhập mã hủy vé bí mật bạn nhận được khi đặt vé. Vé sẽ bị hủy, ghế được trả lại và bạn được hoàn 100% tiền vé.',
-  'cancel.liveBody': 'Nhập email lúc đặt là hủy được. Ghế sẽ trả lại cho người khác và bạn được hoàn tiền (tiền ảo thôi, đây là bản demo).',
+  'cancel.notAvailable':
+    'Vé này được đặt trước khi có mã hủy vé nên không tự hủy được. Vui lòng liên hệ ban tổ chức để hủy.',
   'cancel.code': 'Mã hủy vé',
   'cancel.submit': 'Hủy vé',
   'cancel.submitting': 'Đang hủy…',
@@ -174,6 +200,24 @@ const en: Record<Key, string> = {
   'nav.findTickets': 'Find my tickets',
   'nav.darkMode': 'Dark mode',
   'nav.lightMode': 'Light mode',
+  'nav.thanks': 'Acknowledgements',
+  'thanks.title': 'Acknowledgements',
+  'thanks.greeting': 'Dear all,',
+  'thanks.intro':
+    'nhịp was built by Group 3 of the Web Developer branch during the GDG-HUST Probation round. The idea was simple: a website where HUST students can buy tickets to campus events, pick their seats, get a QR ticket and walk in, without queueing at a desk or messaging someone to ask if seats are left. Building it was less simple.',
+  'thanks.journey':
+    'A few weeks later, nhịp has a virtual waiting room, a live seat map with timed holds, a simulated checkout, cancellation codes, signed QR tickets and an admin page for checking people in at the door. Not everything is perfect, but everything works, and we learned a lot getting here. Before we wrap the project up, we would like to say thank you.',
+  'thanks.mentors':
+    'Thank you to Nguyễn Quang Trung, Head of the Web Developer branch, and to Đỗ Mạnh Hiệp, our mentor, for being with us through the Probation round.',
+  'thanks.team':
+    'Thank you to the three members of Group 3 who built nhịp together, from the first seat map to the last QR scan. Each of us took a piece of the work; sometimes we disagreed, sometimes we ran late, but we always sat back down together until it was done. Thank you for never giving up halfway.',
+  'thanks.gdgAfter':
+    'for the Probation round, for a challenge hard enough that we had to keep learning, and for the chance to build something this close to a real product while we are still students.',
+  'thanks.closing':
+    'nhịp may stop here, but what we learned building it will carry on. See you all in the next project.',
+  'thanks.gdgBefore': 'Thank you to',
+  'thanks.signoff': 'Best wishes,',
+  'thanks.signature': 'Group 3',
   'hero.prev': 'Previous slide',
   'hero.next': 'Next slide',
   'hero.goTo': 'Go to slide',
@@ -202,6 +246,13 @@ const en: Record<Key, string> = {
   'cta.OPEN': 'Get tickets',
   'cta.REGISTER': 'Register',
   'seats.title': 'Choose your seats',
+  'zones.title': 'Pick your tickets',
+  'zones.hint': 'Choose how many tickets you want in each zone. We pick your spot inside the zone.',
+  'zones.stage': 'Stage',
+  'zones.soldOut': 'Sold out',
+  'zones.left': '{count} left',
+  'zones.add': 'Add one {zone} ticket',
+  'zones.remove': 'Remove one {zone} ticket',
   'seats.adminMode': 'Admin mode: no queue, no seat limit',
   'seats.queueRequired': 'Your turn to pick seats is over or no longer valid. Go back to the event and queue again.',
   'room.eyebrow': 'Waiting room',
@@ -308,7 +359,8 @@ const en: Record<Key, string> = {
   'cancel.title': 'Need to cancel?',
   'cancel.body':
     'Enter the secret cancellation code you got when you booked. The booking is cancelled, the seats are released and you get a 100% refund.',
-  'cancel.liveBody': "Enter the email you booked with. Your seats go back on sale and you get a refund (pretend money, it's a demo).",
+  'cancel.notAvailable':
+    'This booking was made before cancellation codes existed, so it cannot be cancelled online. Please contact the organisers.',
   'cancel.code': 'Cancellation code',
   'cancel.submit': 'Cancel booking',
   'cancel.submitting': 'Cancelling…',
