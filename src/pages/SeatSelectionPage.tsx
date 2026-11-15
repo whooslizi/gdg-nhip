@@ -183,7 +183,7 @@ export function SeatSelectionPage() {
       t('seats.taken', { seats: lost.map((l) => seatsById.get(l.id)?.seatLabel ?? '').join(', ') }),
     );
   };
-  const live = useSeatSocket(eventId, onSeatChange);
+  const live = useSeatSocket(eventId, onSeatChange, reserve.isPending ? selected : undefined);
 
   const confirm = useMutation({
     mutationFn: (buyer: { name: string; phone: string; email: string }) =>

@@ -39,7 +39,13 @@ async function loadMap() {
             showtimeId: 10,
             roomId: 3,
             seats: [
-              { seatId: 5, rowLabel: 'A', seatNumber: 1, seatType: 'standard', status: 'available' },
+              {
+                seatId: 5,
+                rowLabel: 'A',
+                seatNumber: 1,
+                seatType: 'standard',
+                status: 'available',
+              },
             ],
           },
         },
@@ -53,13 +59,13 @@ async function loadMap() {
   }
 }
 
-function renderSocket(map: SeatMap) {
+function renderSocket(map: SeatMap, mine?: ReadonlySet<string>) {
   const client = new QueryClient();
   client.setQueryData(key, map);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  renderHook(() => useSeatSocket('1'), { wrapper });
+  renderHook(() => useSeatSocket('1', undefined, mine), { wrapper });
   const seat = () => client.getQueryData<SeatMap>(key)!.sections[0]!.rows[0]!.seats[0]!;
   const send = (status: SeatChangeMessage['seats'][0]['status'], version: number) =>
     act(() =>
@@ -83,5 +89,17 @@ describe('useSeatSocket', () => {
 
     send('HELD', LOADED_AT + 1);
     expect(seat()).toMatchObject({ status: 'HELD', version: LOADED_AT + 1, heldByMe: false });
+  });
+
+  it('does not show a seat this tab is reserving as taken by someone else', async () => {
+    const map = await loadMap();
+    const { seat, send } = renderSocket(map, new Set(['5']));
+
+    send('HELD', LOADED_AT + 1);
+    expect(seat()).toMatchObject({ status: 'AVAILABLE', version: LOADED_AT });
+
+    // Only our own HELD notice is skipped; a sale still shows.
+    send('SOLD', LOADED_AT + 2);
+    expect(seat()).toMatchObject({ status: 'SOLD', heldByMe: false });
   });
 });
