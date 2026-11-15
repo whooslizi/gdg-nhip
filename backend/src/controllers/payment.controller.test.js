@@ -15,6 +15,20 @@ require.cache[servicePath] = {
     },
   },
 };
+const queuePath = path.resolve(__dirname, "../services/hold-queue.service.js");
+const queueCalls = [];
+require.cache[queuePath] = {
+  id: queuePath,
+  filename: queuePath,
+  loaded: true,
+  exports: {
+    holdQueue: {
+      seatsForHold: async () => ({ showtimeId: 4, seatIds: [1] }),
+      cancelRelease: async (token) => queueCalls.push(["cancel", token]),
+      publishSeatChange: async (seats, status) => queueCalls.push(["publish", seats.seatIds, status]),
+    },
+  },
+};
 const { createMockPayment } = require("./payment.controller");
 
 function response() {
@@ -62,4 +76,15 @@ test("accepts 0 or +84 numbers and strips spaces, dots and dashes", async () => 
     assert.equal(res.statusCode, 200, phone);
     assert.equal(calls.at(-1).userPhone, saved);
   }
+});
+
+test("a paid hold drops its release job and marks its seats sold", async () => {
+  queueCalls.length = 0;
+  const res = response();
+  await createMockPayment({ body: body("0912345678") }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(queueCalls, [
+    ["cancel", "hold"],
+    ["publish", [1], "SOLD"],
+  ]);
 });

@@ -81,6 +81,8 @@ export interface SeatMap {
 
 export interface SeatChangeMessage {
   eventId: string;
+  /** Seat ids repeat across showtimes in the same room, so changes name their showtime. */
+  showtimeId?: string;
   seats: { id: string; status: SeatStatus; version: number }[];
 }
 

@@ -66,6 +66,24 @@ Each booking gets a secret cancellation code, shown only on the confirmation pag
 
 On "Find my tickets", look up the booking, enter the cancellation code, and the booking is cancelled, its seats are released and a full (simulated) refund is shown — followed by a cat video.
 
+## Realtime service (optional)
+
+`realtime/` is a small Node service that runs outside Vercel (Railway, Fly, Render...). It frees expired seat holds as soon as they run out (a BullMQ worker on Redis) and pushes seat changes and waiting-room positions over socket.io. Without it, nothing changes: holds still expire lazily and the waiting room polls over HTTP.
+
+1. Run `docs/migrations/2026-11-15_release_expired_hold.sql` in the Supabase SQL editor.
+2. Start Redis: `docker run -p 6379:6379 redis:7`.
+3. `cd realtime && npm install && cp .env.example .env`, fill in the values, then `npm start` (socket server) and `npm run worker` (hold release) in two terminals.
+4. Set `REDIS_URL` in `backend/.env` and `VITE_SOCKET_URL=http://localhost:3001` in `.env.local`.
+
+| Var | Where | Notes |
+|---|---|---|
+| `REDIS_URL` | `backend/.env`, `realtime/.env` | same Redis for both; unset in the backend = no queue, no push |
+| `SUPA_URL`, `SUPA_KEY` | `realtime/.env` | service-role key, same as the backend |
+| `ALLOWED_ORIGINS` | `realtime/.env` | comma-separated frontend origins allowed to connect |
+| `WAITING_ROOM_CAPACITY` | `realtime/.env` | must match the backend |
+| `PORT` | `realtime/.env` | default 3001 |
+| `VITE_SOCKET_URL` | frontend `.env.local` / Vercel | URL of the realtime server; unset = HTTP polling |
+
 ## Disclaimer
 
 nhịp™ is a product of Group 3, Web Developer branch, GDG-HUST Probation. It was built solely for assessment in the GDG-HUST Probation round and is not a commercial service.

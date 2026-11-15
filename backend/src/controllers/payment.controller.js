@@ -1,5 +1,6 @@
 
 const paymentService = require("../services/payment.service");
+const { holdQueue } = require("../services/hold-queue.service");
 
 // Vietnamese mobile: 0 or +84, then 9 digits. Spaces, dots and dashes are dropped first.
 const PHONE = /^(0|\+84)\d{9}$/;
@@ -35,6 +36,7 @@ async function createMockPayment(req, res) {
       });
     }
 
+    const seats = await holdQueue.seatsForHold(holdToken);
     const data = await paymentService.processMockPayment({
       holdToken,
       userName: userName.trim(),
@@ -43,6 +45,11 @@ async function createMockPayment(req, res) {
       price,
       result,
     });
+    // A failed mock payment keeps the hold, so its release job stays.
+    if (data?.success) {
+      await holdQueue.cancelRelease(holdToken);
+      await holdQueue.publishSeatChange(seats, "SOLD");
+    }
 
     return res.status(200).json(data);
   } catch (error) {

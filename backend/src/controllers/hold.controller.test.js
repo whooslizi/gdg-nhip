@@ -4,7 +4,10 @@ const test = require("node:test");
 // The controller pulls in the Supabase client, which refuses to load without these.
 process.env.SUPA_URL ||= "http://localhost:54321";
 process.env.SUPA_KEY ||= "test-key";
-const { holdHandler } = require("./hold.controller");
+// Keep the default hold queue a no-op even if backend/.env sets REDIS_URL (dotenv never overrides).
+process.env.REDIS_URL = "";
+const { holdHandler, cancelHoldHandler } = require("./hold.controller");
+const { createHoldQueue } = require("../services/hold-queue.service");
 
 async function call(handler, body) {
   const res = {
@@ -91,4 +94,56 @@ test("a failing queue check refuses the hold instead of skipping it", async () =
     queueSessionId: "0b6f1c1e-3f5a-4c2e-9d1a-7e8f9a0b1c2d",
   });
   assert.equal(res.statusCode, 500);
+});
+
+test("a hold schedules its release and announces the held seats", async () => {
+  const calls = [];
+  const queue = {
+    scheduleRelease: async (...args) => calls.push(["schedule", ...args]),
+    publishSeatChange: async (seats, status) => calls.push(["publish", seats.seatIds, status]),
+  };
+  const hold = async (showtimeId, seatIds) => ({ holdToken: "t", showtimeId, seatIds, expiresAt: "2026-11-15T10:10:00Z" });
+  const res = await call(holdHandler(8, { hold, queue }), { showtimeId: 4, seatIds: [1, 2] });
+  assert.equal(res.statusCode, 201);
+  assert.deepEqual(calls, [
+    ["schedule", "t", "2026-11-15T10:10:00Z"],
+    ["publish", [1, 2], "HELD"],
+  ]);
+});
+
+test("the hold still returns 201 when the queue throws", async (t) => {
+  t.mock.method(console, "error", () => {});
+  class Broken {
+    async add() {
+      throw new Error("redis down");
+    }
+    async publish() {
+      throw new Error("redis down");
+    }
+  }
+  const queue = createHoldQueue({ redisUrl: "redis://x", Queue: Broken, Redis: Broken });
+  const hold = async (showtimeId, seatIds) => ({ holdToken: "t", showtimeId, seatIds, expiresAt: new Date().toISOString() });
+  const res = await call(holdHandler(8, { hold, queue }), { showtimeId: 4, seatIds: [1] });
+  assert.equal(res.statusCode, 201);
+  assert.equal(res.payload.data.holdToken, "t");
+});
+
+test("cancelling a hold drops its release job and frees the seats it had", async () => {
+  const calls = [];
+  const queue = {
+    seatsForHold: async () => ({ showtimeId: 4, seatIds: [1] }),
+    cancelRelease: async (token) => calls.push(["cancel", token]),
+    publishSeatChange: async (seats, status) => calls.push(["publish", seats.seatIds, status]),
+  };
+  const ok = await call(cancelHoldHandler({ cancel: async () => ({ success: true }), queue }), { holdToken: " t " });
+  assert.equal(ok.statusCode, 200);
+  assert.deepEqual(calls, [
+    ["cancel", "t"],
+    ["publish", [1], "AVAILABLE"],
+  ]);
+
+  calls.length = 0;
+  const gone = await call(cancelHoldHandler({ cancel: async () => ({ success: false }), queue }), { holdToken: "t" });
+  assert.equal(gone.statusCode, 409);
+  assert.deepEqual(calls, []);
 });

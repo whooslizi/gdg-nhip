@@ -1,0 +1,23 @@
+{
+  "name": "nhip-realtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Socket server and seat-hold worker for nhip; runs outside Vercel",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "worker": "node src/worker.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
+    "@supabase/supabase-js": "^2.119.0",
+    "bullmq": "^6.7.6",
+    "dotenv": "^18.0.10",
+    "ioredis": "^6.0.0",
+    "socket.io": "^4.8.4"
+  }
+}

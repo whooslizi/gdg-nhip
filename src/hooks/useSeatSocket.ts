@@ -4,16 +4,22 @@ import { io } from 'socket.io-client';
 import { SOCKET_URL } from '@/lib/api-client';
 import type { SeatChangeMessage, SeatMap } from '@/types/api';
 
-/** Patches the cached seat map from socket hints; stale versions are ignored and REST is re-fetched on reconnect. */
+/**
+ * Patches the cached seat map from socket hints; stale versions are ignored and REST is re-fetched
+ * on reconnect. `mine`: seats this tab is reserving right now, whose HELD notice is its own hold.
+ */
 export function useSeatSocket(
   eventId: string | undefined,
   onChange?: (msg: SeatChangeMessage) => void,
+  mine?: ReadonlySet<string>,
 ) {
   const queryClient = useQueryClient();
   const [connected, setConnected] = useState(true);
   const onChangeRef = useRef(onChange);
+  const mineRef = useRef(mine);
   useEffect(() => {
     onChangeRef.current = onChange;
+    mineRef.current = mine;
   });
 
   useEffect(() => {
@@ -34,7 +40,7 @@ export function useSeatSocket(
       if (msg.eventId !== eventId) return;
       const changes = new Map(msg.seats.map((s) => [s.id, s]));
       queryClient.setQueryData<SeatMap>(
-        key,
+        msg.showtimeId ? [...key, msg.showtimeId] : key,
         (map) =>
           map && {
             ...map,
@@ -45,6 +51,8 @@ export function useSeatSocket(
                 seats: row.seats.map((seat) => {
                   const change = changes.get(seat.id);
                   if (!change || change.version <= seat.version) return seat;
+                  // Our own hold: leave the seat alone until REST says whose hold it is.
+                  if (change.status === 'HELD' && mineRef.current?.has(seat.id)) return seat;
                   // Ownership flags come from REST; a notification never grants "mine".
                   return {
                     ...seat,

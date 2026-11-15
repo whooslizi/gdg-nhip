@@ -28,5 +28,17 @@ async function cancelHold(holdToken) {
   return data;
 }
 
-module.exports = { holdSeats, cancelHold };
+async function seatsForHold(holdToken) {
+  const { data, error } = await supabase
+    .from("showtime_seats")
+    .select("showtimeid, seatid")
+    .eq("holdtoken", holdToken)
+    .eq("status", "holding")
+    .order("seatid");
+
+  if (error) throw error;
+  return data;
+}
+
+module.exports = { holdSeats, cancelHold, seatsForHold };
 
