@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { createRealtime } = require("./server");
+const { createRealtime, allowOrigins } = require("./server");
 
 const SESSION = "0b6f1c1e-3f5a-4c2e-9d1a-7e8f9a0b1c2d";
 const flush = () => new Promise((resolve) => setImmediate(resolve));
@@ -219,4 +219,16 @@ test("a recompute pushes only to waiting sockets, at most 10 at a time", async (
   for (let i = 0; i < 20; i++) await flush();
   assert.equal(sockets.filter((socket) => socket.emitted.length).length, 22);
   assert.equal(peak, 10);
+});
+
+test("only listed origins may connect, on any transport", () => {
+  const allow = allowOrigins(["https://gdg-nhip.vercel.app"]);
+  const answer = (origin) => {
+    let result;
+    allow({ headers: origin ? { origin } : {} }, (error, ok) => (result = [error, ok]));
+    return result;
+  };
+  assert.deepEqual(answer("https://gdg-nhip.vercel.app"), [null, true]);
+  assert.deepEqual(answer("https://evil.example"), ["origin not allowed", false]);
+  assert.deepEqual(answer(undefined), ["origin not allowed", false]);
 });

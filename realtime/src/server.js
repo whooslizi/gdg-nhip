@@ -31,6 +31,11 @@ function clientIp(socket, trustProxy) {
   return (forwarded ? String(forwarded).split(",")[0].trim() : "") || socket.handshake.address;
 }
 
+// CORS only covers polling; a WebSocket upgrade sends Origin but is not checked by the browser,
+// so socket.io's allowRequest refuses any origin outside ALLOWED_ORIGINS on every transport.
+const allowOrigins = (origins) => (req, callback) =>
+  origins.includes(req.headers.origin) ? callback(null, true) : callback("origin not allowed", false);
+
 // Runs fn over items, at most `limit` at a time; one failure does not stop the rest.
 async function eachLimited(items, limit, fn) {
   let next = 0;
@@ -205,6 +210,7 @@ function start() {
   const pub = redis();
   const io = new Server(server, {
     cors: { origin: origins, credentials: true },
+    allowRequest: allowOrigins(origins),
     adapter: createAdapter(pub, pub.duplicate()),
   });
 
@@ -251,4 +257,4 @@ function start() {
 
 if (require.main === module) start();
 
-module.exports = { createRealtime, capacityFromEnv, maxSocketsPerIpFromEnv };
+module.exports = { createRealtime, capacityFromEnv, maxSocketsPerIpFromEnv, allowOrigins };
