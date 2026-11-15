@@ -6,6 +6,12 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_CAPACITY = 50;
 const REFRESH_MS = 10_000;
 const RECOMPUTE_DELAY_MS = 2_000;
+const DEFAULT_MAX_SOCKETS_PER_IP = 20;
+const RECOMPUTE_CONCURRENCY = 10;
+// Each subscribe can cost an RPC that locks the event's queue, so cap them per socket.
+const SUBSCRIBE_LIMIT = 5;
+const SUBSCRIBE_WINDOW_MS = 10_000;
+const PLACES = new Set(["waiting", "admitted"]);
 
 function capacityFromEnv(env = process.env) {
   const value = Number(env.WAITING_ROOM_CAPACITY);
@@ -14,14 +20,68 @@ function capacityFromEnv(env = process.env) {
 
 const isId = (value) => Number.isInteger(value) && value > 0;
 
+function maxSocketsPerIpFromEnv(env = process.env) {
+  const value = Number(env.MAX_SOCKETS_PER_IP);
+  return Number.isInteger(value) && value > 0 ? value : DEFAULT_MAX_SOCKETS_PER_IP;
+}
+
+// X-Forwarded-For can be forged, so it only counts behind a proxy that sets it (TRUST_PROXY=1).
+function clientIp(socket, trustProxy) {
+  const forwarded = trustProxy && socket.handshake.headers["x-forwarded-for"];
+  return (forwarded ? String(forwarded).split(",")[0].trim() : "") || socket.handshake.address;
+}
+
+// Runs fn over items, at most `limit` at a time; one failure does not stop the rest.
+async function eachLimited(items, limit, fn) {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const item = items[next++];
+      try {
+        await fn(item);
+      } catch (error) {
+        console.error("Queue recompute failed:", error.message);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+}
+
 // `io`, `waitingRoom`, `leave` and `eventIdFor` are injected so tests need no Redis or Supabase.
 // waitingRoom(eventId, sessionId) is the REST heartbeat: the waiting_room RPC with p_join=false.
-function createRealtime({ io, waitingRoom, leave, eventIdFor, refreshMs = REFRESH_MS, recomputeDelayMs = RECOMPUTE_DELAY_MS }) {
+function createRealtime({
+  io,
+  waitingRoom,
+  leave,
+  eventIdFor,
+  refreshMs = REFRESH_MS,
+  recomputeDelayMs = RECOMPUTE_DELAY_MS,
+  maxSocketsPerIp = DEFAULT_MAX_SOCKETS_PER_IP,
+  trustProxy = false,
+  clock = Date.now,
+}) {
   async function push(socket) {
     const { eventId, sessionId } = socket.data.queue;
     const status = await waitingRoom(eventId, sessionId);
     socket.emit("queue:status", status);
+    socket.data.result = status?.result;
     return status;
+  }
+
+  // io.use middleware: refuse a client IP's connections past maxSocketsPerIp.
+  const perIp = new Map();
+  function limitConnections(socket, next) {
+    const ip = clientIp(socket, trustProxy);
+    const count = perIp.get(ip) ?? 0;
+    if (count >= maxSocketsPerIp) return next(new Error("Too many connections"));
+    perIp.set(ip, count + 1);
+    socket.data.ip = ip;
+    next();
+  }
+  function release(ip) {
+    const count = (perIp.get(ip) ?? 0) - 1;
+    if (count > 0) perIp.set(ip, count);
+    else perIp.delete(ip);
   }
 
   // Someone left or got in: everyone behind them moved, so tell every waiting socket now
@@ -34,10 +94,10 @@ function createRealtime({ io, waitingRoom, leave, eventIdFor, refreshMs = REFRES
     setTimeout(async () => {
       pending.delete(eventId);
       try {
+        // Admitted guests' positions don't move, so only waiting sockets need a push.
         const sockets = await io.in(`queue:${eventId}`).fetchSockets();
-        for (const socket of sockets) {
-          if (socket.data.queue) await push(socket);
-        }
+        const waiting = sockets.filter((socket) => socket.data.queue && socket.data.result === "waiting");
+        await eachLimited(waiting, RECOMPUTE_CONCURRENCY, push);
       } catch (error) {
         console.error("Queue recompute failed:", error.message);
       }
@@ -46,8 +106,18 @@ function createRealtime({ io, waitingRoom, leave, eventIdFor, refreshMs = REFRES
 
   function onConnection(socket) {
     let timer = null;
+    let windowStart = -Infinity;
+    let messages = 0;
+    const allowed = () => {
+      if (clock() - windowStart >= SUBSCRIBE_WINDOW_MS) {
+        windowStart = clock();
+        messages = 0;
+      }
+      return ++messages <= SUBSCRIBE_LIMIT;
+    };
 
     socket.on("event:subscribe", (payload) => {
+      if (!allowed()) return;
       const eventId = Number(payload?.eventId);
       if (isId(eventId)) socket.join(`event:${eventId}`);
     });
@@ -55,6 +125,7 @@ function createRealtime({ io, waitingRoom, leave, eventIdFor, refreshMs = REFRES
     // Sent after a successful REST join, which is where Turnstile is checked. This socket only
     // keeps that place alive and reports it, like the REST heartbeat.
     socket.on("queue:subscribe", async (payload) => {
+      if (!allowed()) return;
       const { eventId, sessionId } = payload ?? {};
       if (socket.data.queue || !isId(eventId) || typeof sessionId !== "string" || !UUID.test(sessionId)) return;
       socket.data.queue = { eventId, sessionId };
@@ -64,6 +135,13 @@ function createRealtime({ io, waitingRoom, leave, eventIdFor, refreshMs = REFRES
       const tick = async () => {
         try {
           const status = await push(socket);
+          if (!PLACES.has(status?.result)) {
+            // Not (or no longer) in the queue: nothing to keep alive. A server-side close does
+            // not call leave().
+            clearInterval(timer);
+            socket.disconnect(true);
+            return;
+          }
           if (last === "waiting" && status.result === "admitted") recompute(eventId);
           last = status.result;
         } catch (error) {
@@ -78,8 +156,10 @@ function createRealtime({ io, waitingRoom, leave, eventIdFor, refreshMs = REFRES
 
     socket.on("disconnect", async (reason) => {
       clearInterval(timer);
+      if (socket.data.ip !== undefined) release(socket.data.ip);
       const queue = socket.data.queue;
-      if (!queue) return;
+      // A socket that never held a place can't move anyone up, so it costs no recompute.
+      if (!queue || !PLACES.has(socket.data.result)) return;
       try {
         // Only a deliberate close gives the place up. A dropped connection falls back to HTTP
         // polling, which needs the row; if the tab is really gone, 30 quiet seconds remove it.
@@ -109,7 +189,7 @@ function createRealtime({ io, waitingRoom, leave, eventIdFor, refreshMs = REFRES
     }
   }
 
-  return { onConnection, onSeatMessage };
+  return { onConnection, onSeatMessage, limitConnections };
 }
 
 function start() {
@@ -132,6 +212,8 @@ function start() {
   const events = new Map();
   const realtime = createRealtime({
     io,
+    maxSocketsPerIp: maxSocketsPerIpFromEnv(),
+    trustProxy: process.env.TRUST_PROXY === "1",
     waitingRoom: async (eventId, sessionId) => {
       const { data, error } = await db.rpc("waiting_room", {
         p_event_id: eventId,
@@ -157,6 +239,7 @@ function start() {
     },
   });
 
+  io.use(realtime.limitConnections);
   io.on("connection", realtime.onConnection);
   const sub = redis();
   sub.subscribe(SEAT_CHANNEL);
@@ -168,4 +251,4 @@ function start() {
 
 if (require.main === module) start();
 
-module.exports = { createRealtime, capacityFromEnv };
+module.exports = { createRealtime, capacityFromEnv, maxSocketsPerIpFromEnv };

@@ -5,10 +5,11 @@ const { createRealtime } = require("./server");
 const SESSION = "0b6f1c1e-3f5a-4c2e-9d1a-7e8f9a0b1c2d";
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-function fakeSocket() {
+function fakeSocket({ address = "10.0.0.1", headers = {} } = {}) {
   const handlers = {};
   return {
     handlers,
+    handshake: { address, headers },
     data: {},
     connected: true,
     rooms: new Set(),
@@ -29,7 +30,7 @@ function fakeSocket() {
   };
 }
 
-function setup({ waitingRoom, leave = async () => {}, sockets = [] } = {}) {
+function setup({ waitingRoom, leave = async () => {}, sockets = [], ...options } = {}) {
   const broadcasts = [];
   const io = {
     in: () => ({ fetchSockets: async () => sockets }),
@@ -42,6 +43,7 @@ function setup({ waitingRoom, leave = async () => {}, sockets = [] } = {}) {
     eventIdFor: async (showtimeId) => (showtimeId === 7 ? 1 : null),
     refreshMs: 60_000,
     recomputeDelayMs: 0,
+    ...options,
   });
   return { realtime, broadcasts };
 }
@@ -75,6 +77,7 @@ test("a deliberate close leaves the queue and moves everyone else up; a dropped 
   const left = [];
   const other = fakeSocket();
   other.data.queue = { eventId: 1, sessionId: "1b6f1c1e-3f5a-4c2e-9d1a-7e8f9a0b1c2d" };
+  other.data.result = "waiting";
   const { realtime } = setup({
     waitingRoom: async () => status("waiting", 0),
     leave: async (sessionId) => left.push(sessionId),
@@ -129,4 +132,91 @@ test("seat changes go to the event's room in the SeatChangeMessage shape", async
       },
     ],
   ]);
+});
+
+test("a session that is not in the queue gets its status once, then the socket closes without leaving", async () => {
+  const left = [];
+  const calls = [];
+  const { realtime } = setup({
+    waitingRoom: async () => (calls.push(1), status("not_in_queue")),
+    leave: async (sessionId) => left.push(sessionId),
+    sockets: [],
+  });
+  const socket = fakeSocket();
+  realtime.onConnection(socket);
+  await socket.handlers["queue:subscribe"]({ eventId: 1, sessionId: SESSION });
+  await flush();
+  assert.deepEqual(socket.emitted, [["queue:status", status("not_in_queue")]]);
+  assert.equal(socket.connected, false);
+  assert.deepEqual(left, []);
+  assert.equal(calls.length, 1); // no refresh timer, no recompute round
+});
+
+test("connections past the per-IP cap are refused, and a disconnect frees a slot", async () => {
+  const { realtime } = setup({ maxSocketsPerIp: 2 });
+  const results = [];
+  const connect = (socket) => realtime.limitConnections(socket, (error) => results.push(error?.message ?? "ok"));
+  const sockets = [fakeSocket(), fakeSocket(), fakeSocket()];
+  sockets.forEach(connect);
+  assert.deepEqual(results, ["ok", "ok", "Too many connections"]);
+
+  connect(fakeSocket({ address: "10.0.0.2" }));
+  assert.equal(results.at(-1), "ok");
+
+  realtime.onConnection(sockets[0]);
+  await sockets[0].handlers.disconnect("transport close");
+  connect(fakeSocket());
+  assert.equal(results.at(-1), "ok");
+});
+
+test("X-Forwarded-For only counts when the proxy is trusted", () => {
+  const forwarded = () => fakeSocket({ headers: { "x-forwarded-for": "203.0.113.9, 10.0.0.1" } });
+  const run = (trustProxy) => {
+    const { realtime } = setup({ maxSocketsPerIp: 20, trustProxy });
+    const socket = forwarded();
+    realtime.limitConnections(socket, () => {});
+    return socket.data.ip;
+  };
+  assert.equal(run(true), "203.0.113.9");
+  assert.equal(run(false), "10.0.0.1");
+});
+
+test("subscribe messages past 5 per 10 s are ignored", async () => {
+  let now = 0;
+  const { realtime } = setup({ clock: () => now });
+  const socket = fakeSocket();
+  realtime.onConnection(socket);
+  for (let i = 1; i <= 7; i++) socket.handlers["event:subscribe"]({ eventId: i });
+  assert.deepEqual([...socket.rooms], ["event:1", "event:2", "event:3", "event:4", "event:5"]);
+  now = 10_000;
+  socket.handlers["event:subscribe"]({ eventId: 8 });
+  assert.ok(socket.rooms.has("event:8"));
+});
+
+test("a recompute pushes only to waiting sockets, at most 10 at a time", async () => {
+  let running = 0;
+  let peak = 0;
+  const sockets = Array.from({ length: 25 }, (_, i) => {
+    const socket = fakeSocket();
+    socket.data.queue = { eventId: 1, sessionId: SESSION };
+    socket.data.result = i < 22 ? "waiting" : "admitted";
+    return socket;
+  });
+  const { realtime } = setup({
+    sockets,
+    waitingRoom: async () => {
+      peak = Math.max(peak, ++running);
+      await flush();
+      running--;
+      return status("waiting", 0);
+    },
+  });
+  const leaving = fakeSocket();
+  realtime.onConnection(leaving);
+  leaving.data.queue = { eventId: 1, sessionId: SESSION };
+  leaving.data.result = "waiting";
+  await leaving.handlers.disconnect("transport close");
+  for (let i = 0; i < 20; i++) await flush();
+  assert.equal(sockets.filter((socket) => socket.emitted.length).length, 22);
+  assert.equal(peak, 10);
 });
