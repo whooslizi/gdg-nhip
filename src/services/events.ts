@@ -222,6 +222,8 @@ export async function getSeatMap(
     seats: RestSeat[];
   }>(`/showtimes/${showtimeId}/seats`, { signal });
   const event = await eventPromise;
+  // Socket versions are publish times in ms, so a socket message older than this load is stale.
+  const loadedAt = Date.now();
   const statusOf = (status: string): SeatStatus => {
     switch (status.toLowerCase()) {
       case 'holding':
@@ -247,7 +249,7 @@ export async function getSeatMap(
       priceConfigured: ticketType.priceMinor !== null,
       status: statusOf(seat.status),
       heldByMe: false,
-      version: 1,
+      version: loadedAt,
     };
   });
   const ticketTypes = [...new Map(
