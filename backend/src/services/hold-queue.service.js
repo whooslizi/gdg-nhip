@@ -8,6 +8,9 @@ const QUEUE_NAME = "seat-holds";
 const SEAT_CHANNEL = "nhip:seat-changes";
 const GRACE_MS = 2000;
 const TIMEOUT_MS = 1500;
+const BREAK_MS = 30_000;
+// Commands fail at once while Redis is unreachable instead of queueing up in memory.
+const REDIS_OPTIONS = { maxRetriesPerRequest: null, enableOfflineQueue: false, connectTimeout: 1000 };
 
 // `Queue`, `Redis` and `seatsFor` are injectable for tests; the real ones load only when used.
 function createHoldQueue({
@@ -28,14 +31,17 @@ function createHoldQueue({
     if (!queue) {
       Queue ??= require("bullmq").Queue;
       Redis ??= require("ioredis");
-      publisher = new Redis(redisUrl, { maxRetriesPerRequest: null });
-      queue = new Queue(QUEUE_NAME, { connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) });
+      publisher = new Redis(redisUrl, REDIS_OPTIONS);
+      queue = new Queue(QUEUE_NAME, { connection: new Redis(redisUrl, REDIS_OPTIONS) });
     }
     return { queue, publisher };
   };
 
-  // maxRetriesPerRequest: null makes ioredis wait forever while Redis is down, so cap the wait.
-  const guard = (name, fn) => async (...args) => {
+  // After a failure every call is skipped for BREAK_MS, so a dead Redis costs holds nothing;
+  // the timeout is the last guard. A database error in the lookup does not trip it.
+  let brokenUntil = 0;
+  const guard = (name, fn, { trips = true } = {}) => async (...args) => {
+    if (clock() < brokenUntil) return null;
     let timer;
     try {
       return await Promise.race([
@@ -45,7 +51,12 @@ function createHoldQueue({
         }),
       ]);
     } catch (error) {
-      console.error(`Hold queue ${name} failed:`, error.message);
+      if (trips) {
+        brokenUntil = clock() + BREAK_MS;
+        console.error(`Hold queue ${name} failed, skipping Redis for ${BREAK_MS / 1000} s:`, error.message);
+      } else {
+        console.error(`Hold queue ${name} failed:`, error.message);
+      }
       return null;
     } finally {
       clearTimeout(timer);
@@ -79,7 +90,7 @@ function createHoldQueue({
     seatsForHold: guard("lookup", async (holdToken) => {
       const rows = await (seatsFor ?? require("./hold.service").seatsForHold)(holdToken);
       return rows.length ? { showtimeId: rows[0].showtimeid, seatIds: rows.map((row) => row.seatid) } : null;
-    }),
+    }, { trips: false }),
   };
 }
 

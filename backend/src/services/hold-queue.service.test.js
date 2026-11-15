@@ -10,6 +10,7 @@ function fakes({ fail = false } = {}) {
       calls.push(["queue", name]);
     }
     async add(...args) {
+      calls.push(["try add"]);
       if (fail) throw new Error("redis down");
       calls.push(["add", ...args]);
     }
@@ -51,13 +52,22 @@ test("schedules the release just after expiry, keyed by the hold token", async (
   await queue.cancelRelease("tok");
 
   assert.deepEqual(calls.find(([kind]) => kind === "queue"), ["queue", "seat-holds"]);
-  assert.ok(calls.filter(([kind]) => kind === "redis").every(([, options]) => options.maxRetriesPerRequest === null));
+  assert.ok(
+    calls
+      .filter(([kind]) => kind === "redis")
+      .every(([, options]) => options.maxRetriesPerRequest === null && options.enableOfflineQueue === false)
+  );
   const adds = calls.filter(([kind]) => kind === "add");
   assert.deepEqual(adds[0], [
     "add",
     "release",
     { holdToken: "tok" },
-    { jobId: "tok", delay: 602_000, removeOnComplete: true, removeOnFail: 100 },
+    {
+      jobId: "tok",
+      delay: 602_000,
+      removeOnComplete: true,
+      removeOnFail: 100,
+    },
   ]);
   assert.equal(adds[1][3].delay, 2_000);
   assert.deepEqual(calls.at(-1), ["remove", "tok"]);
@@ -90,7 +100,7 @@ test("reads the held seats for a token", async () => {
   assert.deepEqual(await queue.seatsForHold("tok"), { showtimeId: 7, seatIds: [3, 4] });
 });
 
-test("a Redis failure is logged and never thrown", async (t) => {
+test("a Redis failure is logged once and never thrown", async (t) => {
   t.mock.method(console, "error", () => {});
   const { Queue, Redis } = fakes({ fail: true });
   const queue = createHoldQueue({
@@ -105,5 +115,39 @@ test("a Redis failure is logged and never thrown", async (t) => {
   assert.equal(await queue.cancelRelease("t"), null);
   assert.equal(await queue.publishSeatChange({ showtimeId: 1, seatIds: [1] }, "HELD"), null);
   assert.equal(await queue.seatsForHold("t"), null);
-  assert.equal(console.error.mock.callCount(), 4);
+  // The first failure opens the breaker, so the rest are skipped without logging.
+  assert.equal(console.error.mock.callCount(), 1);
+});
+
+test("after a failure Redis is skipped for 30 s, then tried again", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const { calls, Queue, Redis } = fakes({ fail: true });
+  let now = 0;
+  const queue = createHoldQueue({ redisUrl: "redis://x", Queue, Redis, clock: () => now });
+  const tries = () => calls.filter(([kind]) => kind === "try add").length;
+
+  assert.equal(await queue.scheduleRelease("t", new Date().toISOString()), null);
+  assert.equal(tries(), 1);
+  now = 29_999;
+  assert.equal(await queue.scheduleRelease("t", new Date().toISOString()), null);
+  assert.equal(tries(), 1);
+  now = 30_001;
+  assert.equal(await queue.scheduleRelease("t", new Date().toISOString()), null);
+  assert.equal(tries(), 2);
+});
+
+test("a database error in the seat lookup does not stop Redis calls", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const { calls, Queue, Redis } = fakes();
+  const queue = createHoldQueue({
+    redisUrl: "redis://x",
+    Queue,
+    Redis,
+    seatsFor: async () => {
+      throw new Error("db down");
+    },
+  });
+  assert.equal(await queue.seatsForHold("t"), null);
+  await queue.scheduleRelease("t", new Date().toISOString());
+  assert.equal(calls.filter(([kind]) => kind === "add").length, 1);
 });
