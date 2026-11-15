@@ -73,6 +73,8 @@ function createHoldQueue({
           delay: Math.max(0, Date.parse(expiresAt) - clock()) + GRACE_MS,
           removeOnComplete: true,
           removeOnFail: 100,
+          attempts: 5,
+          backoff: { type: "exponential", delay: 5000 },
         }
       )
     ),
