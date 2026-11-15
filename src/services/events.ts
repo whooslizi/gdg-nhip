@@ -290,7 +290,7 @@ export async function getSeatMap(
 
 const ROOM_MS = 10 * 60_000;
 
-function onLocalClock(status: Omit<QueueStatus, 'localExpiresAt'>): QueueStatus {
+export function onLocalClock(status: Omit<QueueStatus, 'localExpiresAt'>): QueueStatus {
   const left = status.expiresAt
     ? Date.parse(status.expiresAt) - Date.parse(status.serverTime)
     : null;

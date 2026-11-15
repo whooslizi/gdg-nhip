@@ -3,13 +3,14 @@ const {
   cancelHold: cancelHoldService,
 } = require("../services/hold.service");
 const { mayHold: queueMayHold } = require("../services/waiting-room.service");
+const { holdQueue } = require("../services/hold-queue.service");
 const { UUID, queueNotSetUp } = require("./waiting-room.controller");
 
 const MAX_SEATS_PER_HOLD = 8;
 
 // `mayHold` checks that the buyer came through the waiting room's gate; null skips it (admins).
-// Both functions are injectable for tests.
-function holdHandler(maxSeats, { hold = holdSeats, mayHold = null } = {}) {
+// `queue` frees the seats when the hold expires (a no-op without REDIS_URL). All injectable for tests.
+function holdHandler(maxSeats, { hold = holdSeats, mayHold = null, queue = holdQueue } = {}) {
   return async function createHold(req, res) {
     try {
       const { showtimeId, seatIds, queueSessionId } = req.body;
@@ -65,6 +66,8 @@ function holdHandler(maxSeats, { hold = holdSeats, mayHold = null } = {}) {
       }
 
       const result = await hold(showtimeId, seatIds);
+      await queue.scheduleRelease(result.holdToken, result.expiresAt);
+      await queue.publishSeatChange(result, "HELD");
 
       return res.status(201).json({
         success: true,
@@ -116,28 +119,37 @@ const createHold = holdHandler(MAX_SEATS_PER_HOLD, { mayHold: queueMayHold });
 // Admins sell to groups and at the door, so their holds have no seat cap. Mounted behind requireAdmin.
 const createAdminHold = holdHandler(Infinity);
 
-async function cancelHold(req, res) {
-  try {
-    const { holdToken } = req.body;
+function cancelHoldHandler({ cancel = cancelHoldService, queue = holdQueue } = {}) {
+  return async function cancelHold(req, res) {
+    try {
+      const { holdToken } = req.body;
 
-    if (typeof holdToken !== "string" || !holdToken.trim()) {
-      return res.status(400).json({
+      if (typeof holdToken !== "string" || !holdToken.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "holdToken is required",
+        });
+      }
+
+      const seats = await queue.seatsForHold(holdToken.trim());
+      const result = await cancel(holdToken.trim());
+      if (result.success) {
+        await queue.cancelRelease(holdToken.trim());
+        await queue.publishSeatChange(seats, "AVAILABLE");
+      }
+
+      return res.status(result.success ? 200 : 409).json(result);
+    } catch (error) {
+      console.error("Cancel hold error:", error);
+
+      return res.status(500).json({
         success: false,
-        message: "holdToken is required",
+        message: "Could not cancel hold",
       });
     }
-
-    const result = await cancelHoldService(holdToken.trim());
-
-    return res.status(result.success ? 200 : 409).json(result);
-  } catch (error) {
-    console.error("Cancel hold error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Could not cancel hold",
-    });
-  }
+  };
 }
 
-module.exports = { createHold, createAdminHold, holdHandler, cancelHold };
+const cancelHold = cancelHoldHandler();
+
+module.exports = { createHold, createAdminHold, holdHandler, cancelHoldHandler, cancelHold };

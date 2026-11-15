@@ -175,6 +175,7 @@ export function SeatSelectionPage() {
   const onSeatChange = (msg: SeatChangeMessage) => {
     // Our own reservation broadcasts before its HTTP response arrives.
     if (reserve.isPending) return;
+    if (msg.showtimeId && msg.showtimeId !== selectedShowtimeId) return;
     const lost = msg.seats.filter((s) => s.status !== 'AVAILABLE' && selected.has(s.id));
     if (lost.length === 0) return;
     setSelected((prev) => new Set([...prev].filter((id) => !lost.some((l) => l.id === id))));

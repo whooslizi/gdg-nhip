@@ -34,7 +34,7 @@ export function useSeatSocket(
       if (msg.eventId !== eventId) return;
       const changes = new Map(msg.seats.map((s) => [s.id, s]));
       queryClient.setQueryData<SeatMap>(
-        key,
+        msg.showtimeId ? [...key, msg.showtimeId] : key,
         (map) =>
           map && {
             ...map,

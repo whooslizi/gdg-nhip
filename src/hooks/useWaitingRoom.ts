@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
 import { useCountdown } from '@/hooks/useCountdown';
-import { joinQueue, leaveQueue, passGate, queueHeartbeat } from '@/services/events';
+import { SOCKET_URL } from '@/lib/api-client';
+import { joinQueue, leaveQueue, onLocalClock, passGate, queueHeartbeat } from '@/services/events';
 import type { QueueStatus } from '@/types/api';
 
 /**
@@ -30,6 +32,26 @@ export function useWaitingRoom(eventId: string | undefined) {
   }).data;
   const left = useCountdown(status?.localExpiresAt ?? null, null);
   const inQueue = !!status && status.result !== 'not_in_queue';
+  const keepAlive = !!eventId && inQueue && left !== 0;
+  const [socketLive, setSocketLive] = useState(false);
+
+  // With a realtime server the place is kept alive and pushed over a socket; the HTTP
+  // heartbeat below takes over whenever the socket is down.
+  useEffect(() => {
+    if (!SOCKET_URL || !keepAlive) return;
+    const socket = io(SOCKET_URL, { withCredentials: true, transports: ['websocket', 'polling'] });
+    socket.on('connect', () => {
+      socket.emit('queue:subscribe', { eventId: Number(eventId), sessionId });
+      setSocketLive(true);
+    });
+    socket.on('disconnect', () => setSocketLive(false));
+    socket.on('queue:status', (next: Omit<QueueStatus, 'localExpiresAt'>) =>
+      queryClient.setQueryData(['queue', eventId, sessionId], onLocalClock(next)),
+    );
+    return () => {
+      socket.disconnect();
+    };
+  }, [keepAlive, eventId, sessionId, queryClient]);
 
   // Waiting tabs check often so the line moves visibly; admitted tabs only keep their slot alive.
   useQuery({
@@ -39,7 +61,7 @@ export function useWaitingRoom(eventId: string | undefined) {
       queryClient.setQueryData(key, next);
       return next;
     },
-    enabled: !!eventId && inQueue && left !== 0,
+    enabled: keepAlive && !socketLive,
     refetchInterval: status?.result === 'admitted' ? 15_000 : 5_000,
     refetchIntervalInBackground: true,
     retry: false,
